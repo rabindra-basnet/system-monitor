@@ -177,33 +177,17 @@ fn run_diagnostics() -> Result<()> {
 }
 
 fn spawn_desktop_window(forward_args: &[String]) -> Result<()> {
+    // 1. Pure Native Rust GTK3 Single-Window Engine (Zero Python, Zero Terminal Tabs, Zero '+' buttons)
+    if stasis::gui::try_launch_native_gui(forward_args).is_ok() {
+        return Ok(());
+    }
+
     let current_exe = env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("stasis"));
     let pass_args: Vec<String> = forward_args
         .iter()
-        .filter(|a| *a != "--gui" && *a != "-g" && *a != "--window")
+        .filter(|a| *a != "--gui" && *a != "-g" && *a != "-i" && *a != "--inline" && *a != "--cli")
         .cloned()
         .collect();
-
-    // 1. Try Native GTK3 Single-Window Wrapper (Zero Tabs, No '+' button, Clean Native GUI Window)
-    let home = env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
-    let window_scripts = [
-        format!("{}/.local/lib/stasis/stasis-window", home),
-        "/usr/local/lib/stasis/stasis-window".to_string(),
-        format!("{}/system-monitor/src/window.py", home),
-    ];
-
-    for script in &window_scripts {
-        if std::path::Path::new(script).exists() {
-            if std::process::Command::new("python3")
-                .arg(script)
-                .args(&pass_args)
-                .spawn()
-                .is_ok()
-            {
-                return Ok(());
-            }
-        }
-    }
 
     // 2. Fallback to alacritty
     if std::process::Command::new("alacritty")

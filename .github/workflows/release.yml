@@ -71,8 +71,6 @@ jobs:
           mkdir -p "${DIST_DIR}"
           
           cp "target/${{ matrix.target }}/release/stasis" "${DIST_DIR}/"
-          cp src/window.py "${DIST_DIR}/stasis-window"
-          chmod +x "${DIST_DIR}/stasis-window"
           cp assets/stasis.svg "${DIST_DIR}/"
           cp stasis.desktop "${DIST_DIR}/"
           cp install.sh "${DIST_DIR}/"
@@ -93,15 +91,12 @@ jobs:
           DEB_DIR="stasis_${RAW_VERSION}_${{ matrix.deb_arch }}"
           mkdir -p "${DEB_DIR}/DEBIAN"
           mkdir -p "${DEB_DIR}/usr/bin"
-          mkdir -p "${DEB_DIR}/usr/lib/stasis"
           mkdir -p "${DEB_DIR}/usr/share/applications"
           mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/scalable/apps"
           mkdir -p "${DEB_DIR}/usr/share/pixmaps"
           
           cp "target/${{ matrix.target }}/release/stasis" "${DEB_DIR}/usr/bin/stasis"
           chmod 755 "${DEB_DIR}/usr/bin/stasis"
-          cp src/window.py "${DEB_DIR}/usr/lib/stasis/stasis-window"
-          chmod 755 "${DEB_DIR}/usr/lib/stasis/stasis-window"
           cp assets/stasis.svg "${DEB_DIR}/usr/share/icons/hicolor/scalable/apps/stasis.svg"
           cp assets/stasis.svg "${DEB_DIR}/usr/share/pixmaps/stasis.svg"
           cp stasis.desktop "${DEB_DIR}/usr/share/applications/stasis.desktop"
@@ -114,8 +109,7 @@ Priority: optional
 Architecture: DEB_ARCH_PLACEHOLDER
 Maintainer: Rabindra Basnet <rabindra@users.noreply.github.com>
 Description: Lightweight Linux system monitor, cleaner, and optimizer
- Stasis is a high-performance, lightweight Linux system monitor and optimizer
- written in Rust and GTK3 (Stacer alternative).
+ Stasis is a 100% pure Rust native Linux system monitor, cleaner, and optimizer (Stacer alternative).
 CONTROL_EOF
           
           sed -i "s/RAW_VERSION_PLACEHOLDER/${RAW_VERSION}/" "${DEB_DIR}/DEBIAN/control"
