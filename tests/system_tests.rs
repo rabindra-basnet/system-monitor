@@ -45,8 +45,8 @@ fn test_theme_transitions() {
 #[test]
 fn test_app_tab_cycling() {
     let tab = AppTab::Dashboard;
-    assert_eq!(tab.next(), AppTab::Processes);
-    assert_eq!(tab.next().next(), AppTab::Cleaner);
+    assert_eq!(tab.next(), AppTab::Network);
+    assert_eq!(tab.next().next(), AppTab::Processes);
     assert_eq!(tab.prev(), AppTab::Applications);
 }
 

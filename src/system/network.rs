@@ -1,6 +1,37 @@
 use std::collections::HashMap;
 use std::process::Command;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NetworkFilterMode {
+    All,
+    Listening,
+    Established,
+    Tcp,
+    Udp,
+}
+
+impl NetworkFilterMode {
+    pub fn label(&self) -> &'static str {
+        match self {
+            NetworkFilterMode::All => "All Sockets",
+            NetworkFilterMode::Listening => "Listening Ports",
+            NetworkFilterMode::Established => "Established Connections",
+            NetworkFilterMode::Tcp => "TCP Sockets",
+            NetworkFilterMode::Udp => "UDP Sockets",
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            NetworkFilterMode::All => NetworkFilterMode::Listening,
+            NetworkFilterMode::Listening => NetworkFilterMode::Established,
+            NetworkFilterMode::Established => NetworkFilterMode::Tcp,
+            NetworkFilterMode::Tcp => NetworkFilterMode::Udp,
+            NetworkFilterMode::Udp => NetworkFilterMode::All,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct SocketEntry {
@@ -12,9 +43,11 @@ pub struct SocketEntry {
     pub peer_port: String,
     pub proc_name: String,
     pub pid: Option<u32>,
+    pub is_system: bool,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct NetworkSummary {
     pub listening_ports: Vec<SocketEntry>,
     pub active_connections: Vec<SocketEntry>,
@@ -25,6 +58,8 @@ pub struct NetworkSummary {
 pub struct NetworkManager {
     pub sockets: Vec<SocketEntry>,
     pub summary: NetworkSummary,
+    pub filter: String,
+    pub filter_mode: NetworkFilterMode,
 }
 
 impl NetworkManager {
@@ -37,6 +72,8 @@ impl NetworkManager {
                 total_sockets: 0,
                 top_network_processes: Vec::new(),
             },
+            filter: String::new(),
+            filter_mode: NetworkFilterMode::All,
         };
         mgr.refresh();
         mgr
@@ -85,6 +122,11 @@ impl NetworkManager {
                         }
                     }
 
+                    let is_system = match pid {
+                        Some(p) => p <= 1000 || proc_name == "systemd-resolved" || proc_name == "cupsd",
+                        None => true,
+                    };
+
                     entries.push(SocketEntry {
                         proto,
                         state,
@@ -94,6 +136,7 @@ impl NetworkManager {
                         peer_port,
                         proc_name,
                         pid,
+                        is_system,
                     });
                 }
             }
@@ -115,13 +158,11 @@ impl NetworkManager {
             }
         }
 
-        // Sort listening by port number
         listening.sort_by_key(|e| e.local_port);
 
-        // Sort proc counts
         let mut top_procs: Vec<(String, usize)> = proc_counts.into_iter().collect();
         top_procs.sort_by(|a, b| b.1.cmp(&a.1));
-        top_procs.truncate(5);
+        top_procs.truncate(6);
 
         self.summary = NetworkSummary {
             total_sockets: entries.len(),
@@ -131,6 +172,35 @@ impl NetworkManager {
         };
 
         self.sockets = entries;
+    }
+
+    pub fn filtered_sockets(&self) -> Vec<&SocketEntry> {
+        let q = self.filter.to_lowercase();
+        self.sockets
+            .iter()
+            .filter(|s| {
+                match self.filter_mode {
+                    NetworkFilterMode::All => true,
+                    NetworkFilterMode::Listening => s.state == "LISTEN",
+                    NetworkFilterMode::Established => s.state == "ESTAB" || s.state == "ESTABLISHED",
+                    NetworkFilterMode::Tcp => s.proto.contains("TCP"),
+                    NetworkFilterMode::Udp => s.proto.contains("UDP"),
+                }
+            })
+            .filter(|s| {
+                if q.is_empty() {
+                    return true;
+                }
+                s.proc_name.to_lowercase().contains(&q)
+                    || s.local_port.to_string().contains(&q)
+                    || s.local_addr.to_lowercase().contains(&q)
+                    || s.peer_addr.to_lowercase().contains(&q)
+                    || s.peer_port.to_lowercase().contains(&q)
+                    || s.proto.to_lowercase().contains(&q)
+                    || s.state.to_lowercase().contains(&q)
+                    || s.pid.map(|p| p.to_string().contains(&q)).unwrap_or(false)
+            })
+            .collect()
     }
 
     pub fn kill_port(&self, port: u16, proto: &str, pid: Option<u32>, sudo_password: Option<&str>) -> Result<(), String> {

@@ -16,17 +16,19 @@ use crate::theme::{Theme, ThemeMode};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AppTab {
     Dashboard = 0,
-    Processes = 1,
-    Cleaner = 2,
-    Services = 3,
-    Autostart = 4,
-    Applications = 5,
+    Network = 1,
+    Processes = 2,
+    Cleaner = 3,
+    Services = 4,
+    Autostart = 5,
+    Applications = 6,
 }
 
 impl AppTab {
     pub fn all() -> &'static [AppTab] {
         &[
             AppTab::Dashboard,
+            AppTab::Network,
             AppTab::Processes,
             AppTab::Cleaner,
             AppTab::Services,
@@ -37,7 +39,8 @@ impl AppTab {
 
     pub fn title(&self) -> &'static str {
         match self {
-            AppTab::Dashboard => "󰍹 Dashboard & Resources",
+            AppTab::Dashboard => "󰍹 Dashboard",
+            AppTab::Network => "󰲝 Network & Ports",
             AppTab::Processes => " Processes",
             AppTab::Cleaner => "󰃢 Cleaner",
             AppTab::Services => " Services",
@@ -48,7 +51,8 @@ impl AppTab {
 
     pub fn next(&self) -> Self {
         match self {
-            AppTab::Dashboard => AppTab::Processes,
+            AppTab::Dashboard => AppTab::Network,
+            AppTab::Network => AppTab::Processes,
             AppTab::Processes => AppTab::Cleaner,
             AppTab::Cleaner => AppTab::Services,
             AppTab::Services => AppTab::Autostart,
@@ -60,7 +64,8 @@ impl AppTab {
     pub fn prev(&self) -> Self {
         match self {
             AppTab::Dashboard => AppTab::Applications,
-            AppTab::Processes => AppTab::Dashboard,
+            AppTab::Network => AppTab::Dashboard,
+            AppTab::Processes => AppTab::Network,
             AppTab::Cleaner => AppTab::Processes,
             AppTab::Services => AppTab::Cleaner,
             AppTab::Autostart => AppTab::Services,
@@ -149,7 +154,7 @@ pub struct App {
     pub gpu_collector: GpuCollector,
 
     // Selections
-    pub selected_port_index: usize,
+    pub network_table_state: TableState,
     pub process_list: Vec<ProcessItem>,
     pub process_table_state: TableState,
     pub cleaner_selected_index: usize,
@@ -196,6 +201,11 @@ impl App {
 
         let sensor_collector = SensorCollector::new();
         let network_mgr = NetworkManager::new();
+        let mut network_table_state = TableState::default();
+        if !network_mgr.sockets.is_empty() {
+            network_table_state.select(Some(0));
+        }
+
         let gpu_collector = GpuCollector::new();
 
         Self {
@@ -216,7 +226,7 @@ impl App {
             network_mgr,
             gpu_collector,
 
-            selected_port_index: 0,
+            network_table_state,
             process_list,
             process_table_state,
             cleaner_selected_index: 0,
@@ -436,6 +446,89 @@ impl App {
             }
             Err(e) => {
                 self.show_toast(&format!("Clean error: {}", e), true);
+            }
+        }
+    }
+
+    // Network navigation
+    pub fn next_socket(&mut self) {
+        let filtered = self.network_mgr.filtered_sockets();
+        if filtered.is_empty() {
+            return;
+        }
+        let i = match self.network_table_state.selected() {
+            Some(i) => {
+                if i + 1 < filtered.len() {
+                    i + 1
+                } else {
+                    i
+                }
+            }
+            None => 0,
+        };
+        self.network_table_state.select(Some(i));
+    }
+
+    pub fn prev_socket(&mut self) {
+        let filtered = self.network_mgr.filtered_sockets();
+        if filtered.is_empty() {
+            return;
+        }
+        let i = match self.network_table_state.selected() {
+            Some(i) => {
+                if i > 0 {
+                    i - 1
+                } else {
+                    0
+                }
+            }
+            None => 0,
+        };
+        self.network_table_state.select(Some(i));
+    }
+
+    pub fn page_down_sockets(&mut self) {
+        let filtered = self.network_mgr.filtered_sockets();
+        if filtered.is_empty() {
+            return;
+        }
+        let current = self.network_table_state.selected().unwrap_or(0);
+        let next = (current + 10).min(filtered.len().saturating_sub(1));
+        self.network_table_state.select(Some(next));
+    }
+
+    pub fn page_up_sockets(&mut self) {
+        let filtered = self.network_mgr.filtered_sockets();
+        if filtered.is_empty() {
+            return;
+        }
+        let current = self.network_table_state.selected().unwrap_or(0);
+        let next = current.saturating_sub(10);
+        self.network_table_state.select(Some(next));
+    }
+
+    pub fn cycle_network_filter(&mut self) {
+        self.network_mgr.filter_mode = self.network_mgr.filter_mode.next();
+        self.network_table_state.select(Some(0));
+        self.show_toast(
+            &format!("Network Filter: {}", self.network_mgr.filter_mode.label()),
+            false,
+        );
+    }
+
+    pub fn copy_selected_socket(&mut self) {
+        let filtered = self.network_mgr.filtered_sockets();
+        if let Some(&i) = self.network_table_state.selected().as_ref() {
+            if let Some(s) = filtered.get(i) {
+                let copy_str = format!(
+                    "Port: {}\nProtocol: {}\nState: {}\nLocal Endpoint: {}:{}\nRemote Peer: {}:{}\nProcess: {}\nPID: {:?}",
+                    s.local_port, s.proto, s.state, s.local_addr, s.local_port, s.peer_addr, s.peer_port, s.proc_name, s.pid
+                );
+                if copy_to_clipboard(&copy_str) {
+                    self.show_toast(&format!("✔ Copied Port {} ({}) details to clipboard", s.local_port, s.proc_name), false);
+                } else {
+                    self.show_toast("Clipboard utility not found", true);
+                }
             }
         }
     }

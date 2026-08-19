@@ -393,9 +393,14 @@ fn run_app<B: ratatui::backend::Backend>(
                         }
                     }
                     Event::Mouse(mouse) => {
-                        let term_size = terminal.size()?;
-                        handle_mouse_event(app, mouse, term_size.width, term_size.height);
-                        need_redraw = true;
+                        match mouse.kind {
+                            MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                                let term_size = terminal.size()?;
+                                handle_mouse_event(app, mouse, term_size.width, term_size.height);
+                                need_redraw = true;
+                            }
+                            _ => {} // Ignore MouseEventKind::Moved to prevent flickering
+                        }
                     }
                     _ => {}
                 }
@@ -470,6 +475,7 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
     match mouse.kind {
         MouseEventKind::ScrollDown => {
             match app.active_tab {
+                AppTab::Network => app.next_socket(),
                 AppTab::Processes => app.next_process(),
                 AppTab::Applications => app.next_app(),
                 AppTab::Services => app.next_service(),
@@ -480,6 +486,7 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
         }
         MouseEventKind::ScrollUp => {
             match app.active_tab {
+                AppTab::Network => app.prev_socket(),
                 AppTab::Processes => app.prev_process(),
                 AppTab::Applications => app.prev_app(),
                 AppTab::Services => app.prev_service(),
@@ -529,6 +536,10 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
             // 2. Search Bar Click (Rows 3, 4, 5)
             if mouse.row >= 3 && mouse.row <= 5 {
                 match app.active_tab {
+                    AppTab::Network => {
+                        app.search_input = app.network_mgr.filter.clone();
+                        app.input_mode = InputMode::Search;
+                    }
                     AppTab::Processes => {
                         app.search_input = app.process_mgr.filter.clone();
                         app.input_mode = InputMode::Search;
@@ -552,6 +563,18 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
 
             // 3. Table / Item Click inside active tab (Rows >= 6)
             match app.active_tab {
+                AppTab::Network => {
+                    let filtered = app.network_mgr.filtered_sockets();
+                    let header_offset = if height >= 34 { 15u16 } else { 6u16 };
+                    if mouse.row >= header_offset && mouse.row < height.saturating_sub(4) {
+                        let visible_row = (mouse.row - header_offset) as usize;
+                        let offset = app.network_table_state.offset();
+                        let target_idx = offset + visible_row;
+                        if target_idx < filtered.len() {
+                            app.network_table_state.select(Some(target_idx));
+                        }
+                    }
+                }
                 AppTab::Processes => {
                     // Header is at row 7, data rows start at row 9
                     if mouse.row >= 9 && mouse.row < height.saturating_sub(2) {
@@ -711,6 +734,10 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             KeyCode::Enter => {
                 let query = app.search_input.clone();
                 match app.active_tab {
+                    AppTab::Network => {
+                        app.network_mgr.filter = query;
+                        app.network_table_state.select(Some(0));
+                    }
                     AppTab::Processes => {
                         app.process_mgr.filter = query;
                         app.refresh_processes();
@@ -734,6 +761,10 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             KeyCode::Esc => {
                 app.search_input.clear();
                 match app.active_tab {
+                    AppTab::Network => {
+                        app.network_mgr.filter.clear();
+                        app.network_table_state.select(Some(0));
+                    }
                     AppTab::Processes => {
                         app.process_mgr.filter.clear();
                         app.refresh_processes();
@@ -753,9 +784,33 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             }
             KeyCode::Backspace => {
                 app.search_input.pop();
+                let query = app.search_input.clone();
+                match app.active_tab {
+                    AppTab::Network => {
+                        app.network_mgr.filter = query;
+                        app.network_table_state.select(Some(0));
+                    }
+                    AppTab::Processes => {
+                        app.process_mgr.filter = query;
+                        app.refresh_processes();
+                    }
+                    _ => {}
+                }
             }
             KeyCode::Char(c) => {
                 app.search_input.push(c);
+                let query = app.search_input.clone();
+                match app.active_tab {
+                    AppTab::Network => {
+                        app.network_mgr.filter = query;
+                        app.network_table_state.select(Some(0));
+                    }
+                    AppTab::Processes => {
+                        app.process_mgr.filter = query;
+                        app.refresh_processes();
+                    }
+                    _ => {}
+                }
             }
             _ => {}
         },
@@ -875,23 +930,27 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     return;
                 }
                 KeyCode::Char('2') | KeyCode::F(2) => {
+                    app.active_tab = AppTab::Network;
+                    return;
+                }
+                KeyCode::Char('3') | KeyCode::F(3) => {
                     app.active_tab = AppTab::Processes;
                     app.refresh_processes();
                     return;
                 }
-                KeyCode::Char('3') | KeyCode::F(3) => {
+                KeyCode::Char('4') | KeyCode::F(4) => {
                     app.active_tab = AppTab::Cleaner;
                     return;
                 }
-                KeyCode::Char('4') | KeyCode::F(4) => {
+                KeyCode::Char('5') | KeyCode::F(5) => {
                     app.active_tab = AppTab::Services;
                     return;
                 }
-                KeyCode::Char('5') | KeyCode::F(5) => {
+                KeyCode::Char('6') | KeyCode::F(6) => {
                     app.active_tab = AppTab::Autostart;
                     return;
                 }
-                KeyCode::Char('6') | KeyCode::F(6) => {
+                KeyCode::Char('7') | KeyCode::F(7) => {
                     app.active_tab = AppTab::Applications;
                     return;
                 }
@@ -904,36 +963,39 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     KeyCode::Char('r') => {
                         app.tick();
                     }
-                    KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('p') => {
-                        if app.selected_port_index > 0 {
-                            app.selected_port_index -= 1;
-                        }
+                    _ => {}
+                },
+                AppTab::Network => match code {
+                    KeyCode::Down | KeyCode::Char('j') => app.next_socket(),
+                    KeyCode::Up => app.prev_socket(),
+                    KeyCode::PageDown => app.page_down_sockets(),
+                    KeyCode::PageUp => app.page_up_sockets(),
+                    KeyCode::Char('f') => app.cycle_network_filter(),
+                    KeyCode::Char('y') => app.copy_selected_socket(),
+                    KeyCode::Char('/') => {
+                        app.search_input = app.network_mgr.filter.clone();
+                        app.input_mode = InputMode::Search;
                     }
-                    KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('n') => {
-                        let total = app.network_mgr.summary.listening_ports.len();
-                        if total > 0 && app.selected_port_index + 1 < total {
-                            app.selected_port_index += 1;
-                        }
-                    }
-                    KeyCode::Char('k') | KeyCode::Char('x') | KeyCode::Delete => {
-                        if let Some(port_entry) = app.network_mgr.summary.listening_ports.get(app.selected_port_index) {
-                            let action = ConfirmAction::KillPort {
-                                port: port_entry.local_port,
-                                proto: port_entry.proto.clone(),
-                                proc_name: port_entry.proc_name.clone(),
-                                pid: port_entry.pid,
-                            };
-                            if action.requires_elevation(false) && !app.is_root() {
-                                app.input_mode = InputMode::SudoPasswordModal {
-                                    pending_action: Box::new(action),
-                                    password: String::new(),
-                                    error_msg: None,
+                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Char('x') | KeyCode::Delete => {
+                        let filtered = app.network_mgr.filtered_sockets();
+                        if let Some(&i) = app.network_table_state.selected().as_ref() {
+                            if let Some(s) = filtered.get(i) {
+                                let action = ConfirmAction::KillPort {
+                                    port: s.local_port,
+                                    proto: s.proto.clone(),
+                                    proc_name: s.proc_name.clone(),
+                                    pid: s.pid,
                                 };
-                            } else {
-                                app.input_mode = InputMode::ConfirmModal(action);
+                                if action.requires_elevation(false) && !app.is_root() {
+                                    app.input_mode = InputMode::SudoPasswordModal {
+                                        pending_action: Box::new(action),
+                                        password: String::new(),
+                                        error_msg: None,
+                                    };
+                                } else {
+                                    app.input_mode = InputMode::ConfirmModal(action);
+                                }
                             }
-                        } else {
-                            app.show_toast("No open listening port selected to terminate", true);
                         }
                     }
                     _ => {}

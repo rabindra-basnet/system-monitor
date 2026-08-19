@@ -3,6 +3,7 @@ pub mod autostart;
 pub mod cleaner;
 pub mod dashboard;
 pub mod modals;
+pub mod network;
 pub mod processes;
 pub mod services;
 
@@ -38,7 +39,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
 fn render_tabs_header(f: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
-    let is_compact = area.width < 115;
+    let is_compact = area.width < 125;
 
     let tab_titles: Vec<Line> = AppTab::all()
         .iter()
@@ -48,6 +49,7 @@ fn render_tabs_header(f: &mut Frame, app: &App, area: Rect) {
             let title_str = if is_compact {
                 match tab {
                     AppTab::Dashboard => "󰍹 Dash",
+                    AppTab::Network => "󰲝 Net",
                     AppTab::Processes => " Procs",
                     AppTab::Cleaner => "󰃢 Clean",
                     AppTab::Services => " Serv",
@@ -96,6 +98,7 @@ fn render_tabs_header(f: &mut Frame, app: &App, area: Rect) {
 fn render_active_tab(f: &mut Frame, app: &mut App, area: Rect) {
     match app.active_tab {
         AppTab::Dashboard => dashboard::render(f, app, area),
+        AppTab::Network => network::render(f, app, area),
         AppTab::Processes => processes::render(f, app, area),
         AppTab::Cleaner => cleaner::render(f, app, area),
         AppTab::Services => services::render(f, app, area),
@@ -110,7 +113,8 @@ fn render_bottom_bar(f: &mut Frame, app: &App, area: Rect) {
 
     let specific_hint = match app.active_tab {
         AppTab::Dashboard => "[r] Refresh",
-        AppTab::Processes => "[k] Kill  [t] Term  [s] Sort  [/] Filter",
+        AppTab::Network => "[k] Kill Port  [f] Mode  [y] Copy  [/] Search",
+        AppTab::Processes => "[k] Kill  [t] Term  [s] Sort  [a] Dir  [y] Copy  [/] Filter",
         AppTab::Cleaner => "[s] Scan  [Space] Toggle  [c] Clean",
         AppTab::Services => "[s] Start  [x] Stop  [r] Restart  [u] Mode  [f] Filter",
         AppTab::Autostart => "[Space] Toggle  [n] Add  [d] Del",
@@ -119,7 +123,7 @@ fn render_bottom_bar(f: &mut Frame, app: &App, area: Rect) {
 
     let line = if is_compact {
         Line::from(vec![
-            Span::styled(" [1-6] Tabs ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(" [1-7] Tabs ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
             Span::raw("│"),
             Span::styled(format!(" {} ", specific_hint), Style::default().fg(theme.fg)),
             Span::raw("│"),
@@ -129,7 +133,7 @@ fn render_bottom_bar(f: &mut Frame, app: &App, area: Rect) {
         ])
     } else {
         Line::from(vec![
-            Span::styled(" [1-6/Tab] Switch Tabs ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(" [1-7/Tab] Switch Tabs ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
             Span::raw(" │ "),
             Span::styled(format!(" {} ", specific_hint), Style::default().fg(theme.fg)),
             Span::raw(" │ "),
