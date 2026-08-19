@@ -1,7 +1,102 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Building Stasis (100% Pure Rust Native Binary) in release mode ==="
+echo "================================================================"
+echo "          Stasis System Optimizer — Installation System Checks  "
+echo "================================================================"
+
+# 1. Check Rust Toolchain
+if ! command -v cargo >/dev/null 2>&1; then
+    echo "❌ Error: Rust toolchain (cargo) is not installed."
+    echo "Install Rust via: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    exit 1
+fi
+echo "✔ [1/4] Rust toolchain detected ($(cargo --version))"
+
+# 2. Check GTK3 and VTE runtime libraries for Native Desktop GUI mode
+check_gtk_dependencies() {
+    echo "🔍 [2/4] Checking GTK3 & VTE libraries for Desktop GUI window..."
+    
+    HAS_GTK=0
+    HAS_VTE=0
+    
+    if ldconfig -p 2>/dev/null | grep -q 'libgtk-3\.so'; then
+        HAS_GTK=1
+    fi
+    if ldconfig -p 2>/dev/null | grep -q 'libvte-2\.91\.so'; then
+        HAS_VTE=1
+    fi
+    
+    # Fallback search paths
+    if [ "$HAS_GTK" -eq 0 ]; then
+        if ls /usr/lib*/libgtk-3.so* /usr/lib/*-linux-gnu*/libgtk-3.so* /lib/*-linux-gnu*/libgtk-3.so* 1>/dev/null 2>&1; then
+            HAS_GTK=1
+        fi
+    fi
+    if [ "$HAS_VTE" -eq 0 ]; then
+        if ls /usr/lib*/libvte-2.91.so* /usr/lib/*-linux-gnu*/libvte-2.91.so* /lib/*-linux-gnu*/libvte-2.91.so* 1>/dev/null 2>&1; then
+            HAS_VTE=1
+        fi
+    fi
+
+    if [ "$HAS_GTK" -eq 1 ] && [ "$HAS_VTE" -eq 1 ]; then
+        echo "✔ [2/4] GTK3 (libgtk-3.so.0) and VTE (libvte-2.91.so.0) found (Full Native GUI Supported)"
+        return 0
+    fi
+
+    echo ""
+    echo "⚠️  [2/4] Missing GTK3 / VTE GUI libraries required for native desktop single-window mode:"
+    [ "$HAS_GTK" -eq 0 ] && echo "    • Missing: libgtk-3.so.0 (GTK 3 runtime)"
+    [ "$HAS_VTE" -eq 0 ] && echo "    • Missing: libvte-2.91.so.0 (VTE terminal widget)"
+    echo ""
+
+    INSTALL_CMD=""
+    if command -v apt-get >/dev/null 2>&1; then
+        INSTALL_CMD="sudo apt-get install -y libgtk-3-0 libvte-2.91-0"
+        echo "    💡 Recommended for Debian/Ubuntu: ${INSTALL_CMD}"
+    elif command -v dnf >/dev/null 2>&1; then
+        INSTALL_CMD="sudo dnf install -y gtk3 vte291"
+        echo "    💡 Recommended for Fedora/RHEL:   ${INSTALL_CMD}"
+    elif command -v pacman >/dev/null 2>&1; then
+        INSTALL_CMD="sudo pacman -S --needed gtk3 vte3"
+        echo "    💡 Recommended for Arch/Manjaro:  ${INSTALL_CMD}"
+    elif command -v zypper >/dev/null 2>&1; then
+        INSTALL_CMD="sudo zypper install -y libgtk-3-0 libvte-2_91-0"
+        echo "    💡 Recommended for openSUSE:      ${INSTALL_CMD}"
+    elif command -v apk >/dev/null 2>&1; then
+        INSTALL_CMD="sudo apk add gtk+3.0 vte3"
+        echo "    💡 Recommended for Alpine:        ${INSTALL_CMD}"
+    fi
+
+    if [ -n "$INSTALL_CMD" ]; then
+        if [ "$(id -u)" -eq 0 ]; then
+            echo "    🔧 Installing GTK3/VTE automatically as root..."
+            ${INSTALL_CMD#sudo } || true
+        elif [ -t 0 ]; then
+            read -r -p "    Would you like to install GTK3 & VTE dependencies now with sudo? [Y/n] " prompt
+            if [[ "$prompt" =~ ^[Yy]?$ ]]; then
+                echo "    🔧 Installing GUI dependencies..."
+                eval "$INSTALL_CMD" || {
+                    echo "    ⚠️ Installation failed. Stasis will default to Terminal CLI mode."
+                }
+            fi
+        else
+            echo "    ℹ️  Running in non-interactive mode. Install GUI libraries above to enable Desktop GUI."
+        fi
+    fi
+}
+
+check_gtk_dependencies
+
+# 3. Check clipboard integration
+if command -v wl-copy >/dev/null 2>&1 || command -v xclip >/dev/null 2>&1; then
+    echo "✔ [3/4] Clipboard utility detected (wl-copy/xclip for [y] copy)"
+else
+    echo "ℹ️  [3/4] Tip: Install 'wl-copy' (Wayland) or 'xclip' (X11) to enable instant [y] process clipboard copying."
+fi
+
+# 4. Build Release Binary
+echo "🔨 [4/4] Building Stasis (100% Pure Rust Native Binary) in release mode..."
 cargo build --release
 
 # Clean up legacy scripts
@@ -48,7 +143,9 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
 fi
 
 echo ""
-echo "✔ Done! Stasis is installed as a 100% Pure Rust Native Desktop Application."
+echo "================================================================"
+echo "✔ Done! Stasis is installed as a 100% Pure Rust Native Application."
 echo "• Launch Desktop GUI:    Click 'Stasis' in Dock or run 'stasis'"
 echo "• Launch in Terminal:    Run 'stasis --cli' or 'stasis -i'"
 echo "• Zero Python:           Pure Rust standalone binary with zero external script runtime!"
+echo "================================================================"

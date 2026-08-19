@@ -244,7 +244,30 @@ fn spawn_desktop_window(forward_args: &[String]) -> Result<()> {
         return Ok(());
     }
 
-    Err(anyhow::anyhow!("No supported window manager or terminal emulator found"))
+    // 5. Fallback to xterm
+    if std::process::Command::new("xterm")
+        .args([
+            "-title", "Stasis — System Optimizer",
+            "-geometry", "134x38",
+            "-e",
+        ])
+        .arg(&current_exe)
+        .arg("-i")
+        .args(&pass_args)
+        .spawn()
+        .is_ok()
+    {
+        return Ok(());
+    }
+
+    eprintln!("\x1b[1;33m⚠️  GTK3 single-window libraries (libgtk-3.so.0 / libvte-2.91.so.0) not detected.\x1b[0m");
+    eprintln!("\x1b[1;36m💡 Install GTK3 & VTE for native single-window desktop mode:\x1b[0m");
+    eprintln!("   • Debian/Ubuntu: sudo apt install libgtk-3-0 libvte-2.91-0");
+    eprintln!("   • Fedora/RHEL:   sudo dnf install gtk3 vte291");
+    eprintln!("   • Arch Linux:    sudo pacman -S gtk3 vte3\n");
+    eprintln!("Launching in direct terminal mode...\n");
+
+    Err(anyhow::anyhow!("Falling back to direct terminal interface"))
 }
 
 fn main() -> Result<()> {
