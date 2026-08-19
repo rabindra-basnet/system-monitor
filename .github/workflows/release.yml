@@ -95,46 +95,43 @@ jobs:
           cp assets/stasis.svg "${DEB_DIR}/usr/share/pixmaps/stasis.svg"
           cp stasis.desktop "${DEB_DIR}/usr/share/applications/stasis.desktop"
           
-          cat << 'CONTROL_EOF' > "${DEB_DIR}/DEBIAN/control"
-Package: stasis
-Version: RAW_VERSION_PLACEHOLDER
-Section: utils
-Priority: optional
-Architecture: DEB_ARCH_PLACEHOLDER
-Maintainer: Rabindra Basnet <rabindra@users.noreply.github.com>
-Depends: libgtk-3-0 (>= 3.24), libvte-2.91-0 (>= 0.52)
-Recommends: fzf, fd-find, ripgrep, eza, bat, zoxide
-Description: Lightweight Linux system monitor, cleaner, and optimizer
- Stasis is a 100% pure Rust native Linux system monitor, cleaner,
- and optimizer (Stacer alternative). Features real-time CPU/RAM/GPU
- monitoring, process management, systemd service control, system
- cache cleaning, package uninstallation, and a GTK3 native GUI.
-CONTROL_EOF
-          
-          sed -i "s/RAW_VERSION_PLACEHOLDER/${RAW_VERSION}/" "${DEB_DIR}/DEBIAN/control"
-          sed -i "s/DEB_ARCH_PLACEHOLDER/${{ matrix.deb_arch }}/" "${DEB_DIR}/DEBIAN/control"
-          
-          cat << 'POSTINST_EOF' > "${DEB_DIR}/DEBIAN/postinst"
-#!/bin/sh
-set -e
-if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database /usr/share/applications || true
-fi
-if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
-fi
-exit 0
-POSTINST_EOF
+          printf '%s\n' \
+            "Package: stasis" \
+            "Version: ${RAW_VERSION}" \
+            "Section: utils" \
+            "Priority: optional" \
+            "Architecture: ${{ matrix.deb_arch }}" \
+            "Maintainer: Rabindra Basnet <rabindra@users.noreply.github.com>" \
+            "Depends: libgtk-3-0 (>= 3.24), libvte-2.91-0 (>= 0.52)" \
+            "Recommends: fzf, fd-find, ripgrep, eza, bat, zoxide" \
+            "Description: Lightweight Linux system monitor, cleaner, and optimizer" \
+            " Stasis is a 100% pure Rust native Linux system monitor, cleaner," \
+            " and optimizer (Stacer alternative). Features real-time CPU/RAM/GPU" \
+            " monitoring, process management, systemd service control, system" \
+            " cache cleaning, package uninstallation, and a GTK3 native GUI." \
+            > "${DEB_DIR}/DEBIAN/control"
+
+          printf '%s\n' \
+            "#!/bin/sh" \
+            "set -e" \
+            "if command -v update-desktop-database >/dev/null 2>&1; then" \
+            "    update-desktop-database /usr/share/applications || true" \
+            "fi" \
+            "if command -v gtk-update-icon-cache >/dev/null 2>&1; then" \
+            "    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true" \
+            "fi" \
+            "exit 0" \
+            > "${DEB_DIR}/DEBIAN/postinst"
           chmod 755 "${DEB_DIR}/DEBIAN/postinst"
-          
-          cat << 'PRERM_EOF' > "${DEB_DIR}/DEBIAN/prerm"
-#!/bin/sh
-set -e
-if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database /usr/share/applications || true
-fi
-exit 0
-PRERM_EOF
+
+          printf '%s\n' \
+            "#!/bin/sh" \
+            "set -e" \
+            "if command -v update-desktop-database >/dev/null 2>&1; then" \
+            "    update-desktop-database /usr/share/applications || true" \
+            "fi" \
+            "exit 0" \
+            > "${DEB_DIR}/DEBIAN/prerm"
           chmod 755 "${DEB_DIR}/DEBIAN/prerm"
 
           dpkg-deb --build --root-owner-group "${DEB_DIR}"
@@ -247,16 +244,16 @@ PRERM_EOF
           ARCHITECTURES="amd64 arm64"
           SUITES="main"
 
-          cat << RELEASE_EOF > dists/stable/Release
-Origin: Stasis
-Label: Stasis APT Repository
-Suite: ${CODENAME}
-Codename: ${CODENAME}
-Architectures: ${ARCHITECTURES}
-Components: ${SUITES}
-Description: Official APT repository for Stasis - Linux System Monitor & Optimizer
-Date: $(date -Ru)
-RELEASE_EOF
+          printf '%s\n' \
+            "Origin: Stasis" \
+            "Label: Stasis APT Repository" \
+            "Suite: ${CODENAME}" \
+            "Codename: ${CODENAME}" \
+            "Architectures: ${ARCHITECTURES}" \
+            "Components: ${SUITES}" \
+            "Description: Official APT repository for Stasis - Linux System Monitor & Optimizer" \
+            "Date: $(date -Ru)" \
+            > dists/stable/Release
 
           # Append SHA256 checksums
           echo "SHA256:" >> dists/stable/Release
