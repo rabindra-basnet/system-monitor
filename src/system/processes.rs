@@ -84,6 +84,21 @@ impl ProcessManager {
         self.users.refresh();
     }
 
+    pub fn cycle_sort(&mut self) {
+        self.sort_by = match self.sort_by {
+            ProcessSortBy::Cpu => ProcessSortBy::Memory,
+            ProcessSortBy::Memory => ProcessSortBy::Pid,
+            ProcessSortBy::Pid => ProcessSortBy::Name,
+            ProcessSortBy::Name => ProcessSortBy::DiskRead,
+            ProcessSortBy::DiskRead => ProcessSortBy::DiskWrite,
+            ProcessSortBy::DiskWrite => ProcessSortBy::Cpu,
+        };
+    }
+
+    pub fn toggle_sort_direction(&mut self) {
+        self.sort_descending = !self.sort_descending;
+    }
+
     pub fn get_processes(&self, sys: &System) -> Vec<ProcessItem> {
         let total_mem = sys.total_memory() as f32;
         let mut items = Vec::with_capacity(sys.processes().len());

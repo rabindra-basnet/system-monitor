@@ -8,7 +8,6 @@ use ratatui::{
 
 use crate::app::App;
 use crate::system::collector::{format_bytes, format_speed};
-use crate::system::processes::ProcessItem;
 
 pub fn render(f: &mut Frame, app: &App, area: Rect) {
     if area.height >= 40 {
@@ -586,7 +585,7 @@ fn render_system_analysis_row(f: &mut Frame, app: &App, area: Rect) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    render_top_consumers_card(f, app, chunks[0]);
+    render_process_service_state_card(f, app, chunks[0]);
     render_health_diagnostics_card(f, app, chunks[1]);
 }
 
@@ -597,80 +596,60 @@ fn render_compact_bottom_row(f: &mut Frame, app: &App, area: Rect) {
         .split(area);
 
     render_all_cores_grid(f, app, chunks[0]);
-    render_top_consumers_card(f, app, chunks[1]);
+    render_health_diagnostics_card(f, app, chunks[1]);
 }
 
-fn render_top_consumers_card(f: &mut Frame, app: &App, area: Rect) {
+fn render_process_service_state_card(f: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 🔥 What is Eating Up the System (Top Consumers) ", theme.title_style()));
+        .title(Span::styled(" ⚙ System State & Service Architecture ", theme.title_style()));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    // Calculate Top CPU processes
-    let mut top_cpu: Vec<&ProcessItem> = app.process_list.iter().collect();
-    top_cpu.sort_by(|a, b| b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal));
-    let top_3_cpu: Vec<&ProcessItem> = top_cpu.into_iter().take(3).collect();
+    let total_procs = app.process_list.len();
+    let running_procs = app.process_list.iter().filter(|p| p.status.starts_with('R')).count();
+    let sleeping_procs = app.process_list.iter().filter(|p| p.status.starts_with('S') || p.status.starts_with('I')).count();
+    let zombie_procs = app.process_list.iter().filter(|p| p.status.starts_with('Z')).count();
 
-    // Calculate Top Memory processes
-    let mut top_mem: Vec<&ProcessItem> = app.process_list.iter().collect();
-    top_mem.sort_by(|a, b| b.memory_bytes.cmp(&a.memory_bytes));
-    let top_3_mem: Vec<&ProcessItem> = top_mem.into_iter().take(3).collect();
+    let total_services = app.service_mgr.services.len();
+    let active_services = app.service_mgr.services.iter().filter(|s| s.active_state == "active").count();
+    let failed_services = app.service_mgr.services.iter().filter(|s| s.sub_state == "failed").count();
 
-    let mut lines = Vec::new();
-
-    // Top CPU Hogs
-    lines.push(Line::from(vec![
-        Span::styled(" Top CPU Consuming Processes: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-    ]));
-
-    if top_3_cpu.is_empty() {
-        lines.push(Line::from(Span::styled("  No active processes found", theme.dim_style())));
+    let failed_style = if failed_services > 0 {
+        Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)
     } else {
-        for p in top_3_cpu {
-            let cpu_color = if p.cpu_usage > 50.0 {
-                theme.danger
-            } else if p.cpu_usage > 20.0 {
-                theme.warning
-            } else {
-                theme.success
-            };
+        Style::default().fg(theme.success)
+    };
 
-            lines.push(Line::from(vec![
-                Span::styled(format!("  PID {:<5} ", p.pid), theme.dim_style()),
-                Span::styled(format!("{:<18}", p.name), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
-                Span::styled(format!("{:>5.1}% CPU", p.cpu_usage), Style::default().fg(cpu_color).add_modifier(Modifier::BOLD)),
-                Span::styled(format!("  ({:.1}% RAM)", p.memory_pct), theme.dim_style()),
-            ]));
-        }
-    }
+    let text = vec![
+        Line::from(vec![
+            Span::styled("• Process State: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(format!("{} Total", total_procs), Style::default().fg(theme.fg)),
+            Span::raw(" | "),
+            Span::styled(format!("{} Running", running_procs), Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+            Span::raw(" | "),
+            Span::styled(format!("{} Sleeping", sleeping_procs), theme.dim_style()),
+            Span::raw(" | "),
+            Span::styled(format!("{} Zombie", zombie_procs), if zombie_procs > 0 { Style::default().fg(theme.danger) } else { theme.dim_style() }),
+        ]),
+        Line::from(vec![
+            Span::styled("• systemd Units: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+            Span::styled(format!("{} Active / {} Loaded", active_services, total_services), Style::default().fg(theme.fg)),
+            Span::raw(" | "),
+            Span::styled(format!("{} Failed", failed_services), failed_style),
+        ]),
+        Line::from(vec![
+            Span::styled("• Port Controls: ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+            Span::styled("Press ↑/↓ to navigate open ports, [k] or [Del] to terminate port", theme.dim_style()),
+        ]),
+    ];
 
-    lines.push(Line::from(Span::raw("")));
-
-    // Top Memory Hogs
-    lines.push(Line::from(vec![
-        Span::styled("󰍛 Top Memory Consuming Processes: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-    ]));
-
-    if top_3_mem.is_empty() {
-        lines.push(Line::from(Span::styled("  No memory consumers found", theme.dim_style())));
-    } else {
-        for p in top_3_mem {
-            lines.push(Line::from(vec![
-                Span::styled(format!("  PID {:<5} ", p.pid), theme.dim_style()),
-                Span::styled(format!("{:<18}", p.name), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
-                Span::styled(format!("{:>9}", format_bytes(p.memory_bytes)), Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
-                Span::styled(format!("  ({:.1}%)", p.memory_pct), theme.dim_style()),
-            ]));
-        }
-    }
-
-    let p = Paragraph::new(lines).wrap(Wrap { trim: true });
+    let p = Paragraph::new(text).wrap(Wrap { trim: true });
     f.render_widget(p, inner);
 }
 

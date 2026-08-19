@@ -8,21 +8,38 @@ use ratatui::{
 
 use crate::app::App;
 use crate::system::collector::format_bytes;
-use crate::system::processes::ProcessSortBy;
+use crate::system::processes::{ProcessItem, ProcessSortBy};
 
 pub fn render(f: &mut Frame, app: &mut App, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Search & Sort Header
-            Constraint::Min(8),    // Table
-            Constraint::Length(3), // Process Detail Bar
-        ])
-        .split(area);
+    if area.height >= 34 {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // Search & Sort Header
+                Constraint::Length(6), // Top Resource Eaters Snapshot Card
+                Constraint::Min(10),   // Process Table
+                Constraint::Length(4), // Process Detail & Clipboard Actions Bar
+            ])
+            .split(area);
 
-    render_header(f, app, chunks[0]);
-    render_table(f, app, chunks[1]);
-    render_detail(f, app, chunks[2]);
+        render_header(f, app, chunks[0]);
+        render_top_eaters_card(f, app, chunks[1]);
+        render_table(f, app, chunks[2]);
+        render_detail(f, app, chunks[3]);
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // Search & Sort Header
+                Constraint::Min(8),    // Process Table
+                Constraint::Length(4), // Process Detail & Clipboard Actions Bar
+            ])
+            .split(area);
+
+        render_header(f, app, chunks[0]);
+        render_table(f, app, chunks[1]);
+        render_detail(f, app, chunks[2]);
+    }
 }
 
 fn render_header(f: &mut Frame, app: &App, area: Rect) {
@@ -42,7 +59,7 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         ProcessSortBy::DiskWrite => "Disk Write",
     };
 
-    let dir_arrow = if app.process_mgr.sort_descending { "▼" } else { "▲" };
+    let dir_arrow = if app.process_mgr.sort_descending { "▼ (Desc)" } else { "▲ (Asc)" };
 
     let search_display = if app.process_mgr.filter.is_empty() {
         Span::styled("None (Press '/' to filter)", theme.dim_style())
@@ -51,18 +68,82 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let line = Line::from(vec![
-        Span::styled("  Filter: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(" 󰒺 Sort [s]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{} ", sort_name), Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{} [a]", dir_arrow), Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+        Span::raw("   |   "),
+        Span::styled("  Filter [/]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
         search_display,
         Span::raw("   |   "),
-        Span::styled(" 󰒺 Sort: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{} {}", sort_name, dir_arrow), Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+        Span::styled(" 📋 Copy [y] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
         Span::raw("   |   "),
-        Span::styled(" 󰏖 Total: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{} processes", app.process_list.len()), Style::default().fg(theme.fg)),
+        Span::styled(
+            format!("{} processes", app.process_list.len()),
+            theme.dim_style(),
+        ),
     ]);
 
     let p = Paragraph::new(line).block(block);
     f.render_widget(p, area);
+}
+
+fn render_top_eaters_card(f: &mut Frame, app: &App, area: Rect) {
+    let theme = &app.theme;
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Calculate Top CPU processes
+    let mut top_cpu: Vec<&ProcessItem> = app.process_list.iter().collect();
+    top_cpu.sort_by(|a, b| b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal));
+    let top_3_cpu: Vec<&ProcessItem> = top_cpu.into_iter().take(3).collect();
+
+    // Calculate Top Memory processes
+    let mut top_mem: Vec<&ProcessItem> = app.process_list.iter().collect();
+    top_mem.sort_by(|a, b| b.memory_bytes.cmp(&a.memory_bytes));
+    let top_3_mem: Vec<&ProcessItem> = top_mem.into_iter().take(3).collect();
+
+    // Top CPU Card
+    let cpu_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.card_bg))
+        .title(Span::styled(" 🔥 Top CPU Consuming Processes ", theme.title_style()));
+
+    let mut cpu_lines = Vec::new();
+    for p in top_3_cpu {
+        let color = if p.cpu_usage > 50.0 { theme.danger } else if p.cpu_usage > 20.0 { theme.warning } else { theme.success };
+        cpu_lines.push(Line::from(vec![
+            Span::styled(format!("  PID {:<5} ", p.pid), theme.dim_style()),
+            Span::styled(format!("{:<16}", p.name), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            Span::styled(format!("{:>5.1}% CPU", p.cpu_usage), Style::default().fg(color).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" ({:.1}% RAM)", p.memory_pct), theme.dim_style()),
+        ]));
+    }
+    let p_cpu = Paragraph::new(cpu_lines).block(cpu_block);
+    f.render_widget(p_cpu, chunks[0]);
+
+    // Top Memory Card
+    let mem_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.card_bg))
+        .title(Span::styled(" 󰍛 Top Memory Consuming Processes ", theme.title_style()));
+
+    let mut mem_lines = Vec::new();
+    for p in top_3_mem {
+        mem_lines.push(Line::from(vec![
+            Span::styled(format!("  PID {:<5} ", p.pid), theme.dim_style()),
+            Span::styled(format!("{:<16}", p.name), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            Span::styled(format!("{:>8}", format_bytes(p.memory_bytes)), Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+            Span::styled(format!(" ({:.1}%)", p.memory_pct), theme.dim_style()),
+        ]));
+    }
+    let p_mem = Paragraph::new(mem_lines).block(mem_block);
+    f.render_widget(p_mem, chunks[1]);
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
@@ -198,7 +279,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.bg))
-        .title(Span::styled("  Process Table ", theme.title_style()));
+        .title(Span::styled("  Process Table (↑/↓ Navigate, [s] Sort, [a] Direction, [/] Search) ", theme.title_style()));
 
     let table = Table::new(rows, widths)
         .header(header)
@@ -215,7 +296,7 @@ fn render_detail(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󰍹 Process Inspector ", theme.title_style()));
+        .title(Span::styled(" 󰍹 Process Inspector & Actions ", theme.title_style()));
 
     let selected = app.selected_process();
     let text = match selected {
@@ -242,6 +323,10 @@ fn render_detail(f: &mut Frame, app: &App, area: Rect) {
                     Span::styled(format!(" CPU: {:.1}% ", p.cpu_usage), Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
                     Span::raw(" | "),
                     Span::styled(format!(" RAM: {} ({:.1}%) ", format_bytes(p.memory_bytes), p.memory_pct), Style::default().fg(theme.fg)),
+                    Span::raw(" | "),
+                    Span::styled(" [y] Copy ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+                    Span::styled(" [k] Kill ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
+                    Span::styled(" [t] Term ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
                 ]),
                 Line::from(vec![
                     Span::styled(" Command: ", Style::default().fg(theme.accent)),

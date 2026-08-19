@@ -917,16 +917,17 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                 },
                 AppTab::Processes => match code {
                     KeyCode::Down | KeyCode::Char('j') => app.next_process(),
-                    KeyCode::Up | KeyCode::Char('k') => app.prev_process(),
+                    KeyCode::Up => app.prev_process(),
                     KeyCode::PageDown => app.page_down_processes(),
                     KeyCode::PageUp => app.page_up_processes(),
                     KeyCode::Char('s') => app.cycle_process_sort(),
-                    KeyCode::Char('d') => app.toggle_process_sort_direction(),
+                    KeyCode::Char('a') | KeyCode::Char('d') => app.toggle_process_sort_direction(),
+                    KeyCode::Char('y') => app.copy_selected_process(),
                     KeyCode::Char('/') => {
                         app.search_input = app.process_mgr.filter.clone();
                         app.input_mode = InputMode::Search;
                     }
-                    KeyCode::Char('K') | KeyCode::Char('x') | KeyCode::Delete => {
+                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Char('x') | KeyCode::Delete => {
                         if let Some(p) = app.selected_process() {
                             if p.is_critical {
                                 app.show_toast(
@@ -934,10 +935,16 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                                     true,
                                 );
                             } else {
-                                let pid = p.pid;
-                                let name = p.name.clone();
-                                app.input_mode =
-                                    InputMode::ConfirmModal(ConfirmAction::KillProcess(pid, name));
+                                let action = ConfirmAction::KillProcess(p.pid, p.name.clone());
+                                if action.requires_elevation(false) && !app.is_root() {
+                                    app.input_mode = InputMode::SudoPasswordModal {
+                                        pending_action: Box::new(action),
+                                        password: String::new(),
+                                        error_msg: None,
+                                    };
+                                } else {
+                                    app.input_mode = InputMode::ConfirmModal(action);
+                                }
                             }
                         }
                     }

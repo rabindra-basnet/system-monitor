@@ -7,7 +7,7 @@ use crate::system::cleaner::SystemCleaner;
 use crate::system::collector::SystemCollector;
 use crate::system::gpu::GpuCollector;
 use crate::system::network::NetworkManager;
-use crate::system::processes::{ProcessItem, ProcessManager, ProcessSortBy};
+use crate::system::processes::{ProcessItem, ProcessManager};
 use crate::system::sensors::SensorCollector;
 use crate::system::services::ServiceManager;
 use crate::system::sudo::is_root;
@@ -333,14 +333,7 @@ impl App {
     }
 
     pub fn cycle_process_sort(&mut self) {
-        self.process_mgr.sort_by = match self.process_mgr.sort_by {
-            ProcessSortBy::Cpu => ProcessSortBy::Memory,
-            ProcessSortBy::Memory => ProcessSortBy::Pid,
-            ProcessSortBy::Pid => ProcessSortBy::DiskRead,
-            ProcessSortBy::DiskRead => ProcessSortBy::DiskWrite,
-            ProcessSortBy::DiskWrite => ProcessSortBy::Name,
-            ProcessSortBy::Name => ProcessSortBy::Cpu,
-        };
+        self.process_mgr.cycle_sort();
         self.refresh_processes();
         self.show_toast(
             &format!("Sorted by: {:?}", self.process_mgr.sort_by),
@@ -349,7 +342,7 @@ impl App {
     }
 
     pub fn toggle_process_sort_direction(&mut self) {
-        self.process_mgr.sort_descending = !self.process_mgr.sort_descending;
+        self.process_mgr.toggle_sort_direction();
         self.refresh_processes();
         self.show_toast(
             &format!(
@@ -358,6 +351,27 @@ impl App {
             ),
             false,
         );
+    }
+
+    pub fn copy_selected_process(&mut self) {
+        if let Some(p) = self.selected_process() {
+            let copy_str = format!(
+                "PID: {}\nName: {}\nUser: {}\nCPU: {:.1}%\nMemory: {} ({:.1}%)\nStatus: {}\nCommand: {}",
+                p.pid,
+                p.name,
+                p.user,
+                p.cpu_usage,
+                crate::system::collector::format_bytes(p.memory_bytes),
+                p.memory_pct,
+                p.status,
+                p.cmd
+            );
+            if copy_to_clipboard(&copy_str) {
+                self.show_toast(&format!("✔ Copied PID {} ({}) to clipboard", p.pid, p.name), false);
+            } else {
+                self.show_toast("Clipboard utility (wl-copy/xclip) not found", true);
+            }
+        }
     }
 
     pub fn selected_process(&self) -> Option<&ProcessItem> {
@@ -659,4 +673,41 @@ impl App {
             }
         }
     }
+}
+
+pub fn copy_to_clipboard(text: &str) -> bool {
+    // 1. Try wl-copy (Wayland)
+    if let Ok(mut child) = std::process::Command::new("wl-copy")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            let _ = stdin.write_all(text.as_bytes());
+        }
+        if let Ok(status) = child.wait() {
+            if status.success() {
+                return true;
+            }
+        }
+    }
+
+    // 2. Try xclip (X11)
+    if let Ok(mut child) = std::process::Command::new("xclip")
+        .args(["-selection", "clipboard"])
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            let _ = stdin.write_all(text.as_bytes());
+        }
+        if let Ok(status) = child.wait() {
+            if status.success() {
+                return true;
+            }
+        }
+    }
+
+    false
 }
