@@ -275,7 +275,7 @@ fn main() -> Result<()> {
                     force_inline = true;
                 }
                 "-g" | "--gui" => {
-                    force_gui = true;
+                    // GUI is default
                 }
                 "-h" | "--help" => {
                     print_help();
