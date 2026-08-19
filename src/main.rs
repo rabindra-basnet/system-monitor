@@ -4,7 +4,7 @@ mod theme;
 mod ui;
 
 use std::env;
-use std::io::{stdout, IsTerminal};
+use std::io::stdout;
 use std::panic;
 use std::time::{Duration, Instant};
 
@@ -266,7 +266,6 @@ fn spawn_desktop_window(forward_args: &[String]) -> Result<()> {
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let mut initial_tab = AppTab::Dashboard;
-    let mut force_gui = false;
     let mut force_inline = false;
 
     if args.len() > 1 {
