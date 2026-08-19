@@ -52,9 +52,17 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
+    let (table_pct, sidebar_pct) = if area.width < 110 {
+        (60, 40)
+    } else if area.width > 150 {
+        (70, 30)
+    } else {
+        (65, 35)
+    };
+
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(65), Constraint::Percentage(35)])
+        .constraints([Constraint::Percentage(table_pct), Constraint::Percentage(sidebar_pct)])
         .split(area);
 
     render_autostart_table(f, app, chunks[0]);
@@ -63,6 +71,7 @@ fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
 
 fn render_autostart_table(f: &mut Frame, app: &mut App, area: Rect) {
     let theme = &app.theme;
+    let w = area.width;
 
     let header_cells = ["Status", "Name", "Exec Command", "Scope"]
         .iter()
@@ -74,9 +83,9 @@ fn render_autostart_table(f: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .map(|(_, item)| {
             let (status_text, status_style) = if item.enabled {
-                ("ENABLED", Style::default().fg(theme.success).add_modifier(Modifier::BOLD))
+                (" [● ENABLED] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD))
             } else {
-                ("DISABLED", theme.dim_style())
+                (" [○ DISABLED] ", theme.dim_style())
             };
 
             let scope_str = if item.is_user { "User" } else { "System" };
@@ -87,7 +96,7 @@ fn render_autostart_table(f: &mut Frame, app: &mut App, area: Rect) {
             };
 
             let cells = vec![
-                Cell::from(format!("  {}  ", status_text)).style(status_style),
+                Cell::from(status_text).style(status_style),
                 Cell::from(item.name.clone()).style(Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
                 Cell::from(item.exec.clone()).style(theme.dim_style()),
                 Cell::from(scope_str).style(scope_style),
@@ -97,12 +106,21 @@ fn render_autostart_table(f: &mut Frame, app: &mut App, area: Rect) {
         })
         .collect();
 
-    let widths = [
-        Constraint::Length(12),
-        Constraint::Length(22),
-        Constraint::Min(24),
-        Constraint::Length(10),
-    ];
+    let widths = if w < 80 {
+        vec![
+            Constraint::Length(14),
+            Constraint::Percentage(35),
+            Constraint::Percentage(35),
+            Constraint::Min(8),
+        ]
+    } else {
+        vec![
+            Constraint::Length(16),
+            Constraint::Length(25),
+            Constraint::Percentage(45),
+            Constraint::Length(10),
+        ]
+    };
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -126,7 +144,7 @@ fn render_autostart_sidebar(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󱕚 Application Details ", theme.title_style()));
+        .title(Span::styled(" 󱕚 Entry Details & Controls ", theme.title_style()));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -134,28 +152,37 @@ fn render_autostart_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(7), // Details card
-            Constraint::Length(6), // Action controls
-            Constraint::Min(3),    // Note
+            Constraint::Length(9),  // Details card
+            Constraint::Length(7),  // Action controls
+            Constraint::Min(3),     // Tip
         ])
         .split(inner);
 
     let filtered = app.autostart_mgr.filtered_items();
-    let selected_item = app
+    let selected_entry = app
         .autostart_table_state
         .selected()
-        .and_then(|idx| filtered.get(idx).map(|(_, it)| *it));
+        .and_then(|idx| filtered.get(idx).copied());
 
-    if let Some(item) = selected_item {
+    if let Some((_, item)) = selected_entry {
         let details_block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(theme.border))
-            .title(Span::styled(" Desktop Entry ", theme.title_style()));
+            .title(Span::styled(" Application Info ", theme.title_style()));
+
+        let status_badge = if item.enabled {
+            Span::styled(" [● Enabled at Boot] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD))
+        } else {
+            Span::styled(" [○ Disabled at Boot] ", theme.dim_style())
+        };
 
         let text = vec![
             Line::from(vec![
                 Span::styled("Name: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
                 Span::styled(&item.name, Style::default().fg(theme.fg)),
+            ]),
+            Line::from(vec![
+                status_badge,
             ]),
             Line::from(vec![
                 Span::styled("Exec: ", Style::default().fg(theme.secondary)),
@@ -167,16 +194,13 @@ fn render_autostart_sidebar(f: &mut Frame, app: &App, area: Rect) {
             ]),
             Line::from(vec![
                 Span::styled("Comment: ", theme.dim_style()),
-                Span::styled(
-                    if item.comment.is_empty() { "(none)" } else { &item.comment },
-                    theme.dim_style(),
-                ),
+                Span::styled(&item.comment, Style::default().fg(theme.fg)),
             ]),
         ];
         let p = Paragraph::new(text).block(details_block).wrap(Wrap { trim: true });
         f.render_widget(p, rows[0]);
     } else {
-        let p = Paragraph::new("No autostart app selected").style(theme.dim_style());
+        let p = Paragraph::new("No autostart item selected").style(theme.dim_style());
         f.render_widget(p, rows[0]);
     }
 
@@ -184,19 +208,19 @@ fn render_autostart_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let actions_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(theme.border))
-        .title(Span::styled(" Controls ", theme.title_style()));
+        .title(Span::styled(" Management Controls ", theme.title_style()));
 
     let actions_text = vec![
         Line::from(vec![
-            Span::styled(" [Space] / [Enter] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-            Span::styled("Toggle Status", Style::default().fg(theme.fg)),
+            Span::styled(" [Space] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+            Span::styled("Toggle Enable / Disable", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [n] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
-            Span::styled("Add New Autostart App", Style::default().fg(theme.fg)),
+            Span::styled(" [n] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled("Add New Autostart Entry", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [d] / [Del] ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
+            Span::styled(" [d/Del] ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
             Span::styled("Delete Entry", Style::default().fg(theme.fg)),
         ]),
     ];
@@ -207,7 +231,7 @@ fn render_autostart_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let note_text = vec![
         Line::from(Span::styled("💡 Tip:", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))),
         Line::from(Span::styled(
-            "Toggling system-wide entries automatically overrides them locally in ~/.config/autostart without modifying system root directories.",
+            "Disabling startup apps frees boot memory and speeds up desktop login time.",
             theme.dim_style(),
         )),
     ];

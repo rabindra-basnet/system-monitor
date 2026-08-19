@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, Wrap},
     Frame,
 };
 
@@ -67,11 +67,55 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     let theme = &app.theme;
+    let w = area.width;
 
-    let header_cells = ["PID", "Scope", "Name", "User", "CPU %", "MEM %", "Memory", "Disk R/s", "Disk W/s", "Status"]
-        .iter()
-        .map(|&h| Cell::from(Span::styled(h, theme.header_style())));
-    let header = Row::new(header_cells).height(1).bottom_margin(1);
+    let (header_cells, widths): (Vec<&str>, Vec<Constraint>) = if w < 105 {
+        (
+            vec!["PID", "Scope", "Name", "CPU %", "Memory", "Status"],
+            vec![
+                Constraint::Length(7),
+                Constraint::Length(12),
+                Constraint::Percentage(35),
+                Constraint::Length(8),
+                Constraint::Length(10),
+                Constraint::Min(8),
+            ],
+        )
+    } else if w < 130 {
+        (
+            vec!["PID", "Scope", "Name", "User", "CPU %", "MEM %", "Memory", "Status"],
+            vec![
+                Constraint::Length(7),
+                Constraint::Length(12),
+                Constraint::Percentage(26),
+                Constraint::Length(10),
+                Constraint::Length(8),
+                Constraint::Length(8),
+                Constraint::Length(11),
+                Constraint::Min(8),
+            ],
+        )
+    } else {
+        (
+            vec!["PID", "Scope", "Name", "User", "CPU %", "MEM %", "Memory", "Disk R/s", "Disk W/s", "Status"],
+            vec![
+                Constraint::Length(8),
+                Constraint::Length(12),
+                Constraint::Percentage(24),
+                Constraint::Length(12),
+                Constraint::Length(9),
+                Constraint::Length(9),
+                Constraint::Length(12),
+                Constraint::Length(12),
+                Constraint::Length(12),
+                Constraint::Length(10),
+            ],
+        )
+    };
+
+    let header = Row::new(header_cells.iter().map(|&h| Cell::from(Span::styled(h, theme.header_style()))))
+        .height(1)
+        .bottom_margin(1);
 
     let rows: Vec<Row> = app
         .process_list
@@ -110,35 +154,44 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
                 Style::default().fg(theme.fg)
             };
 
-            let cells = vec![
-                Cell::from(item.pid.to_string()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.accent) }),
-                Cell::from(scope_badge),
-                Cell::from(item.name.clone()).style(name_style),
-                Cell::from(item.user.clone()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.secondary) }),
-                Cell::from(format!("{:.1}%", item.cpu_usage)).style(cpu_style),
-                Cell::from(format!("{:.1}%", item.memory_pct)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
-                Cell::from(format_bytes(item.memory_bytes)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
-                Cell::from(format!("{}/s", format_bytes(item.disk_read_bytes))).style(theme.dim_style()),
-                Cell::from(format!("{}/s", format_bytes(item.disk_write_bytes))).style(theme.dim_style()),
-                Cell::from(item.status.clone()).style(status_style),
-            ];
+            let cells = if w < 105 {
+                vec![
+                    Cell::from(item.pid.to_string()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.accent) }),
+                    Cell::from(scope_badge),
+                    Cell::from(item.name.clone()).style(name_style),
+                    Cell::from(format!("{:.1}%", item.cpu_usage)).style(cpu_style),
+                    Cell::from(format_bytes(item.memory_bytes)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
+                    Cell::from(item.status.clone()).style(status_style),
+                ]
+            } else if w < 130 {
+                vec![
+                    Cell::from(item.pid.to_string()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.accent) }),
+                    Cell::from(scope_badge),
+                    Cell::from(item.name.clone()).style(name_style),
+                    Cell::from(item.user.clone()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.secondary) }),
+                    Cell::from(format!("{:.1}%", item.cpu_usage)).style(cpu_style),
+                    Cell::from(format!("{:.1}%", item.memory_pct)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
+                    Cell::from(format_bytes(item.memory_bytes)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
+                    Cell::from(item.status.clone()).style(status_style),
+                ]
+            } else {
+                vec![
+                    Cell::from(item.pid.to_string()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.accent) }),
+                    Cell::from(scope_badge),
+                    Cell::from(item.name.clone()).style(name_style),
+                    Cell::from(item.user.clone()).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.secondary) }),
+                    Cell::from(format!("{:.1}%", item.cpu_usage)).style(cpu_style),
+                    Cell::from(format!("{:.1}%", item.memory_pct)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
+                    Cell::from(format_bytes(item.memory_bytes)).style(if item.is_critical { theme.dim_style() } else { Style::default().fg(theme.fg) }),
+                    Cell::from(format!("{}/s", format_bytes(item.disk_read_bytes))).style(theme.dim_style()),
+                    Cell::from(format!("{}/s", format_bytes(item.disk_write_bytes))).style(theme.dim_style()),
+                    Cell::from(item.status.clone()).style(status_style),
+                ]
+            };
 
             Row::new(cells).height(1)
         })
         .collect();
-
-    let widths = [
-        Constraint::Length(8),
-        Constraint::Length(12),
-        Constraint::Percentage(22),
-        Constraint::Length(12),
-        Constraint::Length(9),
-        Constraint::Length(9),
-        Constraint::Length(12),
-        Constraint::Length(12),
-        Constraint::Length(12),
-        Constraint::Length(10),
-    ];
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -162,31 +215,43 @@ fn render_detail(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󱕚 Selected Process Details & Actions ", theme.title_style()));
+        .title(Span::styled(" 󰍹 Process Inspector ", theme.title_style()));
 
-    let text = if let Some(p) = app.selected_process() {
-        let tag = if p.is_critical {
-            Span::styled(" [🔒 System Process — Protected] ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
-        } else {
-            Span::styled(" [User Process] ", Style::default().fg(theme.success))
-        };
+    let selected = app.selected_process();
+    let text = match selected {
+        Some(p) => {
+            let cmd_display = if p.cmd.is_empty() {
+                p.name.clone()
+            } else {
+                p.cmd.clone()
+            };
 
-        Line::from(vec![
-            Span::styled(format!(" [{}] ", p.pid), Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-            tag,
-            Span::styled("Cmd: ", Style::default().fg(theme.secondary)),
-            Span::styled(&p.cmd, Style::default().fg(theme.fg)),
-            Span::raw(" | "),
-            Span::styled(" [k] Kill  [t] Term  [p] Pause  [c] Resume  [s] Sort  [/] Filter", theme.dim_style()),
-        ])
-    } else {
-        Line::from(vec![
-            Span::styled(" No process selected ", theme.dim_style()),
-            Span::raw(" | "),
-            Span::styled(" [s] Change Sort  [d] Sort Direction  [/] Search Filter", theme.dim_style()),
-        ])
+            let scope_str = if p.is_critical {
+                " [🔒 Protected System Process]"
+            } else {
+                " [User Process]"
+            };
+
+            vec![
+                Line::from(vec![
+                    Span::styled(format!(" PID: {} ", p.pid), Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(scope_str, if p.is_critical { theme.dim_style() } else { Style::default().fg(theme.success) }),
+                    Span::raw(" | "),
+                    Span::styled(format!(" User: {} ", p.user), Style::default().fg(theme.secondary)),
+                    Span::raw(" | "),
+                    Span::styled(format!(" CPU: {:.1}% ", p.cpu_usage), Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+                    Span::raw(" | "),
+                    Span::styled(format!(" RAM: {} ({:.1}%) ", format_bytes(p.memory_bytes), p.memory_pct), Style::default().fg(theme.fg)),
+                ]),
+                Line::from(vec![
+                    Span::styled(" Command: ", Style::default().fg(theme.accent)),
+                    Span::styled(cmd_display, theme.dim_style()),
+                ]),
+            ]
+        }
+        None => vec![Line::from(Span::styled("No process selected", theme.dim_style()))],
     };
 
-    let p = Paragraph::new(text).block(block);
+    let p = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
     f.render_widget(p, area);
 }

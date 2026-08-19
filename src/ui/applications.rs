@@ -66,9 +66,17 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
+    let (table_pct, sidebar_pct) = if area.width < 110 {
+        (60, 40)
+    } else if area.width > 150 {
+        (70, 30)
+    } else {
+        (65, 35)
+    };
+
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(65), Constraint::Percentage(35)])
+        .constraints([Constraint::Percentage(table_pct), Constraint::Percentage(sidebar_pct)])
         .split(area);
 
     render_apps_table(f, app, chunks[0]);
@@ -77,11 +85,37 @@ fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
 
 fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
     let theme = &app.theme;
+    let w = area.width;
 
-    let header_cells = ["Scope", "Application / Package", "Version", "Size", "Age / Installed", "Source", "Summary"]
-        .iter()
-        .map(|&h| Cell::from(Span::styled(h, theme.header_style())));
-    let header = Row::new(header_cells).height(1).bottom_margin(1);
+    let (header_cells, widths): (Vec<&str>, Vec<Constraint>) = if w < 80 {
+        (
+            vec!["Scope", "Application", "Size", "Age", "Source"],
+            vec![
+                Constraint::Length(12),
+                Constraint::Percentage(35),
+                Constraint::Length(10),
+                Constraint::Length(12),
+                Constraint::Length(8),
+            ],
+        )
+    } else {
+        (
+            vec!["Scope", "Application / Package", "Version", "Size", "Age / Installed", "Source", "Summary"],
+            vec![
+                Constraint::Length(14),
+                Constraint::Length(22),
+                Constraint::Length(14),
+                Constraint::Length(10),
+                Constraint::Length(15),
+                Constraint::Length(9),
+                Constraint::Min(20),
+            ],
+        )
+    };
+
+    let header = Row::new(header_cells.iter().map(|&h| Cell::from(Span::styled(h, theme.header_style()))))
+        .height(1)
+        .bottom_margin(1);
 
     let filtered = app.app_mgr.filtered_items();
     let rows: Vec<Row> = filtered
@@ -127,29 +161,29 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
                 Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)
             };
 
-            let cells = vec![
-                Cell::from(scope_badge),
-                Cell::from(item.name.clone()).style(name_style),
-                Cell::from(item.version.clone()).style(theme.dim_style()),
-                Cell::from(size_display).style(if item.is_essential { theme.dim_style() } else { Style::default().fg(theme.warning) }),
-                Cell::from(age_display).style(age_style),
-                Cell::from(item.source.clone()).style(source_style),
-                Cell::from(item.description.clone()).style(desc_style),
-            ];
+            let cells = if w < 80 {
+                vec![
+                    Cell::from(scope_badge),
+                    Cell::from(item.name.clone()).style(name_style),
+                    Cell::from(size_display).style(if item.is_essential { theme.dim_style() } else { Style::default().fg(theme.warning) }),
+                    Cell::from(age_display).style(age_style),
+                    Cell::from(item.source.clone()).style(source_style),
+                ]
+            } else {
+                vec![
+                    Cell::from(scope_badge),
+                    Cell::from(item.name.clone()).style(name_style),
+                    Cell::from(item.version.clone()).style(theme.dim_style()),
+                    Cell::from(size_display).style(if item.is_essential { theme.dim_style() } else { Style::default().fg(theme.warning) }),
+                    Cell::from(age_display).style(age_style),
+                    Cell::from(item.source.clone()).style(source_style),
+                    Cell::from(item.description.clone()).style(desc_style),
+                ]
+            };
 
             Row::new(cells).height(1)
         })
         .collect();
-
-    let widths = [
-        Constraint::Length(14),
-        Constraint::Length(22),
-        Constraint::Length(14),
-        Constraint::Length(10),
-        Constraint::Length(15),
-        Constraint::Length(9),
-        Constraint::Min(20),
-    ];
 
     let block = Block::default()
         .borders(Borders::ALL)
