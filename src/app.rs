@@ -35,8 +35,8 @@ impl AppTab {
 
     pub fn title(&self) -> &'static str {
         match self {
-            AppTab::Dashboard => "󰨇 Dashboard & Resources",
-            AppTab::Processes => " Processes",
+            AppTab::Dashboard => "󰍹 Dashboard & Resources",
+            AppTab::Processes => " Processes",
             AppTab::Cleaner => "󰃢 Cleaner",
             AppTab::Services => " Services",
             AppTab::Autostart => "󱑞 Startup Apps",

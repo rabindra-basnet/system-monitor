@@ -62,23 +62,73 @@ pub struct ApplicationManager {
 
 pub fn is_system_essential_package(name: &str) -> bool {
     let lower = name.to_lowercase();
+    // 1. Core OS & Kernel & Init
     lower == "base-files"
+        || lower == "base-passwd"
         || lower.starts_with("systemd")
         || lower.starts_with("libc6")
+        || lower.starts_with("glibc")
         || lower.starts_with("coreutils")
         || lower == "dpkg"
         || lower == "apt"
+        || lower == "aptitude"
+        || lower == "pacman"
+        || lower == "rpm"
+        || lower == "dnf"
+        || lower == "zypper"
         || lower.starts_with("linux-image")
         || lower.starts_with("linux-headers")
         || lower.starts_with("linux-modules")
+        || lower.starts_with("linux-firmware")
         || lower.starts_with("grub")
+        || lower.starts_with("shim")
+        || lower.starts_with("efibootmgr")
         || lower.starts_with("udev")
+        || lower.starts_with("util-linux")
+        || lower.starts_with("findutils")
+        || lower.starts_with("libgcc")
+        || lower.starts_with("libstdc++")
+        // 2. Shell & Authentication & Security
         || lower == "bash"
         || lower == "dash"
+        || lower == "sh"
         || lower == "login"
+        || lower == "passwd"
+        || lower == "shadow"
         || lower == "sudo"
         || lower == "dbus"
-        || lower == "polkit"
+        || lower.starts_with("dbus-")
+        || lower.starts_with("polkit")
+        || lower.starts_with("policykit")
+        || lower.starts_with("libpam")
+        || lower.starts_with("openssl")
+        || lower.starts_with("libssl")
+        || lower == "ca-certificates"
+        // 3. Desktop Environment & Window Manager & Graphics Core
+        || lower.starts_with("gnome-shell")
+        || lower.starts_with("gnome-session")
+        || lower.starts_with("gnome-control-center")
+        || lower.starts_with("gdm")
+        || lower.starts_with("lightdm")
+        || lower.starts_with("sddm")
+        || lower.starts_with("xorg")
+        || lower.starts_with("xserver-xorg")
+        || lower.starts_with("wayland")
+        || lower.starts_with("mutter")
+        || lower.starts_with("plasma-desktop")
+        || lower.starts_with("xfce4-session")
+        || lower.starts_with("pipewire")
+        || lower.starts_with("pulseaudio")
+        || lower.starts_with("alsa-")
+        || lower.starts_with("mesa-")
+        || lower.starts_with("libgtk-")
+        || lower.starts_with("libgl1")
+        // 4. Networking Core
+        || lower.starts_with("network-manager")
+        || lower.starts_with("netplan")
+        || lower.starts_with("wpasupplicant")
+        || lower.starts_with("iproute2")
+        || lower.starts_with("openssh-server")
 }
 
 impl ApplicationManager {
@@ -99,9 +149,9 @@ impl ApplicationManager {
         self.is_loading = true;
         let mut all_apps = Vec::new();
 
-        // 1. Try Debian/Ubuntu dpkg-query
+        // 1. Try Debian/Ubuntu dpkg-query with Essential and Priority tags
         if let Ok(output) = Command::new("dpkg-query")
-            .args(["-W", "-f=${binary:Package}\t${Version}\t${Installed-Size}\t${binary:Summary}\n"])
+            .args(["-W", "-f=${binary:Package}\t${Version}\t${Installed-Size}\t${binary:Summary}\t${Essential}\t${Priority}\n"])
             .output()
         {
             if output.status.success() {
@@ -113,6 +163,8 @@ impl ApplicationManager {
                         let version = parts[1].trim().to_string();
                         let raw_size: u64 = parts[2].trim().parse().unwrap_or(0);
                         let desc = parts[3].trim().to_string();
+                        let essential_field = if parts.len() >= 5 { parts[4].trim() } else { "no" };
+                        let priority_field = if parts.len() >= 6 { parts[5].trim() } else { "optional" };
 
                         // Fix: Some 3rd-party .deb packages (e.g. Viber, Zoom) incorrectly record
                         // Installed-Size in raw bytes instead of KiB. If raw_size > 5,000,000 (>5GB),
@@ -123,7 +175,10 @@ impl ApplicationManager {
                             raw_size * 1024
                         };
 
-                        let is_essential = is_system_essential_package(&name);
+                        let is_essential = essential_field == "yes"
+                            || priority_field == "required"
+                            || priority_field == "important"
+                            || is_system_essential_package(&name);
 
                         all_apps.push(ApplicationItem {
                             name: name.clone(),
@@ -426,6 +481,10 @@ impl ApplicationManager {
     }
 
     pub fn uninstall_app(&mut self, app: &ApplicationItem, sudo_pass: Option<&str>) -> Result<String, String> {
+        if app.is_essential {
+            return Err(format!("Cannot uninstall '{}': Protected system package essential for Linux operation", app.name));
+        }
+
         let (cmd_name, args, needs_sudo): (&str, Vec<&str>, bool) = match app.source.as_str() {
             "APT" => ("apt-get", vec!["remove", "-y", &app.package_id], true),
             "Pacman" => ("pacman", vec!["-R", "--noconfirm", &app.package_id], true),
