@@ -316,8 +316,9 @@ fn main() -> Result<()> {
         }
     }
 
-    let is_terminal = std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
-    if !force_inline && (force_gui || !is_terminal) {
+    // By default, `stasis` opens the dedicated native desktop application directly!
+    // Pass `-i` or `--cli` to run inside the existing terminal shell.
+    if !force_inline {
         if spawn_desktop_window(&args[1..]).is_ok() {
             return Ok(());
         }

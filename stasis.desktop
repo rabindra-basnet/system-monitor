@@ -3,7 +3,7 @@ Type=Application
 Name=Stasis
 GenericName=System Monitor & Optimizer
 Comment=Stacer-inspired lightweight Linux system monitor, cleaner, and optimizer
-Exec=stasis -g
+Exec=stasis
 Icon=stasis
 Terminal=false
 StartupWMClass=stasis
@@ -13,16 +13,16 @@ Actions=Processes;Cleaner;Services;Applications;
 
 [Desktop Action Processes]
 Name=Open Process Manager
-Exec=stasis -g -p
+Exec=stasis -p
 
 [Desktop Action Cleaner]
 Name=Open System Cleaner
-Exec=stasis -g -c
+Exec=stasis -c
 
 [Desktop Action Services]
 Name=Open Services
-Exec=stasis -g -s
+Exec=stasis -s
 
 [Desktop Action Applications]
 Name=Open Uninstaller
-Exec=stasis -g -a
+Exec=stasis -a
