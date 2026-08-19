@@ -427,15 +427,15 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                     if mouse.column < center_x {
                         // Clicked Confirm [Y]
                         let needs_elevation = action.requires_elevation(app.service_mgr.user_mode);
-                        if needs_elevation && !app.is_root() && app.sudo_password.is_none() {
+                        if needs_elevation && !app.is_root() {
                             app.input_mode = InputMode::SudoPasswordModal {
                                 pending_action: Box::new(action),
                                 password: String::new(),
                                 error_msg: None,
                             };
                         } else {
-                            app.execute_confirm_action(action);
                             app.input_mode = InputMode::Normal;
+                            app.execute_confirm_action(action);
                         }
                     } else {
                         // Clicked Cancel [N]
@@ -623,7 +623,7 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             match code {
                 KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => {
                     let needs_elevation = action_clone.requires_elevation(app.service_mgr.user_mode);
-                    if needs_elevation && !app.is_root() && app.sudo_password.is_none() {
+                    if needs_elevation && !app.is_root() {
                         app.input_mode = InputMode::SudoPasswordModal {
                             pending_action: Box::new(action_clone),
                             password: String::new(),
@@ -661,6 +661,8 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                         app.input_mode = InputMode::Normal;
                         app.show_toast("🔒 Sudo authenticated — executing action...", false);
                         app.execute_confirm_action(action);
+                        // Zero-retention security: wipe password immediately after action completes
+                        app.sudo_password = None;
                     } else {
                         app.input_mode = InputMode::SudoPasswordModal {
                             pending_action: Box::new(action),

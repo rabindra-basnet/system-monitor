@@ -1,0 +1,169 @@
+name: Release & Build Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-package:
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            arch: x86_64
+            deb_arch: amd64
+            cross: false
+          - target: x86_64-unknown-linux-musl
+            arch: x86_64-musl
+            deb_arch: amd64
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            deb_arch: arm64
+            cross: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install cross for ARM64
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build Binary
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Create Distribution Tarball
+        run: |
+          VERSION="${{ github.ref_name }}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "master" ] || [ "$VERSION" = "main" ]; then
+            VERSION="${{ github.event.inputs.version || 'v0.1.0' }}"
+          fi
+          
+          DIST_DIR="stasis-${VERSION}-${{ matrix.arch }}"
+          mkdir -p "${DIST_DIR}"
+          
+          cp "target/${{ matrix.target }}/release/stasis" "${DIST_DIR}/"
+          cp src/window.py "${DIST_DIR}/stasis-window"
+          chmod +x "${DIST_DIR}/stasis-window"
+          cp assets/stasis.svg "${DIST_DIR}/"
+          cp stasis.desktop "${DIST_DIR}/"
+          cp install.sh "${DIST_DIR}/"
+          chmod +x "${DIST_DIR}/install.sh"
+          cp README.md "${DIST_DIR}/"
+          cp LICENSE "${DIST_DIR}/"
+          
+          tar -czvf "${DIST_DIR}.tar.gz" "${DIST_DIR}"
+
+      - name: Build Debian (.deb) Package
+        run: |
+          VERSION="${{ github.ref_name }}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "master" ] || [ "$VERSION" = "main" ]; then
+            VERSION="${{ github.event.inputs.version || 'v0.1.0' }}"
+          fi
+          RAW_VERSION="${VERSION#v}"
+          
+          DEB_DIR="stasis_${RAW_VERSION}_${{ matrix.deb_arch }}"
+          mkdir -p "${DEB_DIR}/DEBIAN"
+          mkdir -p "${DEB_DIR}/usr/bin"
+          mkdir -p "${DEB_DIR}/usr/lib/stasis"
+          mkdir -p "${DEB_DIR}/usr/share/applications"
+          mkdir -p "${DEB_DIR}/usr/share/icons/hicolor/scalable/apps"
+          mkdir -p "${DEB_DIR}/usr/share/pixmaps"
+          
+          cp "target/${{ matrix.target }}/release/stasis" "${DEB_DIR}/usr/bin/stasis"
+          chmod 755 "${DEB_DIR}/usr/bin/stasis"
+          cp src/window.py "${DEB_DIR}/usr/lib/stasis/stasis-window"
+          chmod 755 "${DEB_DIR}/usr/lib/stasis/stasis-window"
+          cp assets/stasis.svg "${DEB_DIR}/usr/share/icons/hicolor/scalable/apps/stasis.svg"
+          cp assets/stasis.svg "${DEB_DIR}/usr/share/pixmaps/stasis.svg"
+          cp stasis.desktop "${DEB_DIR}/usr/share/applications/stasis.desktop"
+          
+          cat << 'CONTROL_EOF' > "${DEB_DIR}/DEBIAN/control"
+Package: stasis
+Version: RAW_VERSION_PLACEHOLDER
+Section: utils
+Priority: optional
+Architecture: DEB_ARCH_PLACEHOLDER
+Maintainer: Rabindra Basnet <rabindra@users.noreply.github.com>
+Description: Lightweight Linux system monitor, cleaner, and optimizer
+ Stasis is a high-performance, lightweight Linux system monitor and optimizer
+ written in Rust and GTK3 (Stacer alternative).
+CONTROL_EOF
+          
+          sed -i "s/RAW_VERSION_PLACEHOLDER/${RAW_VERSION}/" "${DEB_DIR}/DEBIAN/control"
+          sed -i "s/DEB_ARCH_PLACEHOLDER/${{ matrix.deb_arch }}/" "${DEB_DIR}/DEBIAN/control"
+          
+          cat << 'POSTINST_EOF' > "${DEB_DIR}/DEBIAN/postinst"
+#!/bin/sh
+set -e
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+fi
+exit 0
+POSTINST_EOF
+          chmod 755 "${DEB_DIR}/DEBIAN/postinst"
+          
+          dpkg-deb --build --root-owner-group "${DEB_DIR}"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: |
+            *.tar.gz
+            *.deb
+
+  create-release:
+    name: Publish GitHub Release
+    needs: build-and-package
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts directory
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.deb" \) -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name || github.event.inputs.version }}
