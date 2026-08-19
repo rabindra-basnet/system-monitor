@@ -1,2 +1,407 @@
-# APT Repository
-Stasis APT repository - see pool/ and dists/
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stasis APT Repository</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #58a6ff, #bc8cff, #f778ba);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            color: #8b949e;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .badges {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .badge-rust { background: #b7410e; color: #fff; }
+        .badge-linux { background: #33a852; color: #fff; }
+        .badge-size { background: #8957e5; color: #fff; }
+        .badge-license { background: #1f6feb; color: #fff; }
+
+        .section {
+            margin-bottom: 2rem;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #161b22;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.1rem;
+            color: #f0f6fc;
+        }
+
+        .section-icon {
+            font-size: 1.3rem;
+        }
+
+        .section-body {
+            padding: 1.5rem;
+        }
+
+        .install-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .install-block code {
+            color: #7ee787;
+        }
+
+        .install-block .comment { color: #8b949e; }
+        .install-block .cmd { color: #58a6ff; }
+        .install-block .url { color: #d2a8ff; }
+        .install-block .flag { color: #f778ba; }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover { background: #30363d; color: #c9d1d9; }
+        .copy-btn.copied { background: #238636; color: #fff; border-color: #238636; }
+
+        .packages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        .pkg-card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            transition: border-color 0.2s;
+        }
+
+        .pkg-card:hover { border-color: #58a6ff; }
+
+        .pkg-name {
+            color: #58a6ff;
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .pkg-version {
+            color: #8b949e;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pkg-arch {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .arch-tag {
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            background: #21262d;
+            color: #7ee787;
+            border: 1px solid #238636;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.8rem;
+        }
+
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            padding: 0.8rem;
+            border-radius: 8px;
+            background: #0d1117;
+            border: 1px solid #21262d;
+        }
+
+        .feature-icon { font-size: 1.2rem; }
+
+        .feature-text {
+            font-size: 0.8rem;
+            color: #8b949e;
+        }
+
+        .feature-text strong { color: #c9d1d9; }
+
+        .links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .link-primary {
+            background: #238636;
+            color: #fff;
+            border: 1px solid #2ea043;
+        }
+
+        .link-primary:hover { background: #2ea043; }
+
+        .link-secondary {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+        }
+
+        .link-secondary:hover { background: #30363d; }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1.5rem;
+            color: #484f58;
+            font-size: 0.75rem;
+            border-top: 1px solid #21262d;
+        }
+
+        footer a { color: #58a6ff; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            h1 { font-size: 1.8rem; }
+            .logo { font-size: 3rem; }
+            .packages-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">󱐋</div>
+            <h1>Stasis</h1>
+            <p class="tagline">Lightweight Linux System Monitor, Optimizer & App Uninstaller</p>
+            <div class="badges">
+                <span class="badge badge-rust">Rust 1.75+</span>
+                <span class="badge badge-linux">Linux</span>
+                <span class="badge badge-size">~1.2 MB Binary</span>
+                <span class="badge badge-license">MIT License</span>
+            </div>
+        </header>
+
+        <!-- Quick Install -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">📦</span>
+                <h2>APT Repository Install</h2>
+            </div>
+            <div class="section-body">
+                <div class="install-block" id="install-block">
+                    <button class="copy-btn" onclick="copyInstall()">Copy</button>
+<span class="comment"># Import the signing key</span>
+<span class="cmd">wget</span> <span class="flag">-qO -</span> <span class="url">https://rabindra-basnet.github.io/system-monitor/key.gpg</span> | <span class="cmd">sudo</span> gpg <span class="flag">--dearmor</span> <span class="flag">-o</span> /usr/share/keyrings/stasis.gpg
+
+<span class="comment"># Add the repository</span>
+<span class="cmd">echo</span> <span class="url">"deb [signed-by=/usr/share/keyrings/stasis.gpg] https://rabindra-basnet.github.io/system-monitor stable main"</span> | <span class="cmd">sudo</span> tee /etc/apt/sources.list.d/stasis.list
+
+<span class="comment"># Install</span>
+<span class="cmd">sudo</span> apt update && <span class="cmd">sudo</span> apt install stasis
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Packages -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">📋</span>
+                <h2>Available Packages</h2>
+            </div>
+            <div class="section-body">
+                <div class="packages-grid">
+                    <div class="pkg-card">
+                        <div class="pkg-name">stasis</div>
+                        <div class="pkg-version">v0.2.0 &mdash; Latest Release</div>
+                        <div class="pkg-arch">
+                            <span class="arch-tag">amd64</span>
+                            <span class="arch-tag">arm64</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">✨</span>
+                <h2>What's Inside</h2>
+            </div>
+            <div class="section-body">
+                <div class="features-grid">
+                    <div class="feature">
+                        <span class="feature-icon">󰨇</span>
+                        <div class="feature-text"><strong>Dashboard</strong><br>CPU, RAM, GPU, Network sparklines, thermal sensors</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon"></span>
+                        <div class="feature-text"><strong>Process Manager</strong><br>Kill, terminate, pause, sort, search, clipboard copy</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">󰃢</span>
+                        <div class="feature-text"><strong>System Cleaner</strong><br>Cache, thumbnails, crash dumps, logs, trash</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon"></span>
+                        <div class="feature-text"><strong>systemd Services</strong><br>Start, stop, restart, enable, disable units</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">󱑞</span>
+                        <div class="feature-text"><strong>Startup Apps</strong><br>Toggle autostart, add/remove .desktop entries</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">󰏖</span>
+                        <div class="feature-text"><strong>Uninstaller</strong><br>APT, Pacman, RPM, Flatpak, Snap packages</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">󰲝</span>
+                        <div class="feature-text"><strong>Network</strong><br>Open ports, socket map, port killing, filter</div>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🎨</span>
+                        <div class="feature-text"><strong>5 Themes</strong><br>Cyberpunk, Dracula, Nord, Monokai, Gruvbox</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Links -->
+        <div class="links">
+            <a href="https://github.com/rabindra-basnet/system-monitor" class="link-btn link-primary">
+                ⭐ GitHub Repository
+            </a>
+            <a href="https://github.com/rabindra-basnet/system-monitor/releases" class="link-btn link-secondary">
+                📥 All Releases
+            </a>
+            <a href="https://github.com/rabindra-basnet/system-monitor/blob/master/docs/keygeneration.md" class="link-btn link-secondary">
+                🔐 Key Generation Docs
+            </a>
+        </div>
+
+        <footer>
+            Stasis &copy; 2026 <a href="https://github.com/rabindra-basnet">Rabindra Basnet</a> &mdash; MIT License<br>
+            Built with Rust &bull; 100% Native &bull; Zero Python
+        </footer>
+    </div>
+
+    <script>
+        function copyInstall() {
+            const text = `# Import the signing key
+wget -qO - https://rabindra-basnet.github.io/system-monitor/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/stasis.gpg
+
+# Add the repository
+echo "deb [signed-by=/usr/share/keyrings/stasis.gpg] https://rabindra-basnet.github.io/system-monitor stable main" | sudo tee /etc/apt/sources.list.d/stasis.list
+
+# Install
+sudo apt update && sudo apt install stasis`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
