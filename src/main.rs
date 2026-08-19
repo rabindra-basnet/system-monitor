@@ -519,24 +519,41 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
     }
 
     match mouse.kind {
-        MouseEventKind::ScrollDown => match app.active_tab {
-            AppTab::Network => app.next_socket(),
-            AppTab::Processes => app.next_process(),
-            AppTab::Applications => app.next_app(),
-            AppTab::Services => app.next_service(),
-            AppTab::Autostart => app.next_autostart(),
-            AppTab::Cleaner => app.next_cleaner_category(),
-            _ => {}
-        },
-        MouseEventKind::ScrollUp => match app.active_tab {
-            AppTab::Network => app.prev_socket(),
-            AppTab::Processes => app.prev_process(),
-            AppTab::Applications => app.prev_app(),
-            AppTab::Services => app.prev_service(),
-            AppTab::Autostart => app.prev_autostart(),
-            AppTab::Cleaner => app.prev_cleaner_category(),
-            _ => {}
-        },
+        MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+            // Scroll on tab header (rows 0-2) switches tabs
+            if mouse.row <= 2 {
+                if mouse.kind == MouseEventKind::ScrollDown {
+                    app.active_tab = app.active_tab.next();
+                } else {
+                    app.active_tab = app.active_tab.prev();
+                }
+                if app.active_tab == AppTab::Processes {
+                    app.refresh_processes();
+                }
+                return;
+            }
+            match mouse.kind {
+                MouseEventKind::ScrollDown => match app.active_tab {
+                    AppTab::Network => app.next_socket(),
+                    AppTab::Processes => app.next_process(),
+                    AppTab::Applications => app.next_app(),
+                    AppTab::Services => app.next_service(),
+                    AppTab::Autostart => app.next_autostart(),
+                    AppTab::Cleaner => app.next_cleaner_category(),
+                    _ => {}
+                },
+                MouseEventKind::ScrollUp => match app.active_tab {
+                    AppTab::Network => app.prev_socket(),
+                    AppTab::Processes => app.prev_process(),
+                    AppTab::Applications => app.prev_app(),
+                    AppTab::Services => app.prev_service(),
+                    AppTab::Autostart => app.prev_autostart(),
+                    AppTab::Cleaner => app.prev_cleaner_category(),
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
         MouseEventKind::Down(MouseButton::Left) => {
             // 1. Top Tab Bar Click (Rows 0, 1, 2)
             if mouse.row <= 2 {
@@ -973,6 +990,20 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                 }
                 KeyCode::BackTab => {
                     app.active_tab = app.active_tab.prev();
+                    if app.active_tab == AppTab::Processes {
+                        app.refresh_processes();
+                    }
+                    return;
+                }
+                KeyCode::Left => {
+                    app.active_tab = app.active_tab.prev();
+                    if app.active_tab == AppTab::Processes {
+                        app.refresh_processes();
+                    }
+                    return;
+                }
+                KeyCode::Right => {
+                    app.active_tab = app.active_tab.next();
                     if app.active_tab == AppTab::Processes {
                         app.refresh_processes();
                     }
