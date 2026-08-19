@@ -147,3 +147,12 @@ fn test_network_manager() {
     assert!(net_mgr.summary.listening_ports.len() <= net_mgr.summary.total_sockets);
 }
 
+#[test]
+fn test_gpu_collector() {
+    let mut gpu_col = stasis::system::gpu::GpuCollector::new();
+    gpu_col.refresh();
+    // Verify it doesn't panic on systems with or without GPU
+    let _ = gpu_col.is_available;
+}
+
+

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::process::Command;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SocketEntry {
     pub proto: String,
     pub state: String,
@@ -130,5 +131,23 @@ impl NetworkManager {
         };
 
         self.sockets = entries;
+    }
+
+    pub fn kill_port(&self, port: u16, proto: &str, pid: Option<u32>, sudo_password: Option<&str>) -> Result<(), String> {
+        let port_str = port.to_string();
+        let proto_lower = proto.to_lowercase();
+
+        if let Some(p) = pid {
+            let pid_str = p.to_string();
+            let res = Command::new("kill").args(["-9", &pid_str]).output();
+            if let Ok(out) = res {
+                if out.status.success() {
+                    return Ok(());
+                }
+            }
+            return crate::system::sudo::run_elevated_command("kill", &["-9", &pid_str], sudo_password).map(|_| ());
+        }
+
+        crate::system::sudo::run_elevated_command("fuser", &["-k", "-n", &proto_lower, &port_str], sudo_password).map(|_| ())
     }
 }

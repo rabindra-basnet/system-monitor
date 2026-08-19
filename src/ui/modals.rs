@@ -127,6 +127,13 @@ fn render_confirm_modal(f: &mut Frame, app: &App, action: &ConfirmAction) {
                 format!("Are you sure you want to uninstall '{}' ({}) via {}?\n\nPackage ID: {}{}", app_item.name, app_item.version, app_item.source, app_item.package_id, warn),
             )
         }
+        ConfirmAction::KillPort { port, proto, proc_name, pid } => {
+            let pid_text = pid.map(|p| format!(" (PID {})", p)).unwrap_or_default();
+            (
+                " 󰒺 Confirm Kill Port & Process ",
+                format!("Are you sure you want to kill Port {} [{}] bound to '{}{}'?\n\nThis will terminate the listening network socket immediately.", port, proto, proc_name, pid_text),
+            )
+        }
     };
 
     let block = Block::default()
@@ -191,6 +198,7 @@ fn render_sudo_password_modal(
         ConfirmAction::ServiceAction(act, unit) => format!("Elevated privileges needed to {} systemd service '{}'", act, unit),
         ConfirmAction::UninstallApp(app) => format!("Elevated privileges needed to uninstall system package '{}'", app.name),
         ConfirmAction::KillProcess(pid, name) => format!("Elevated privileges needed to kill PID {} ({})", pid, name),
+        ConfirmAction::KillPort { port, proc_name, .. } => format!("Elevated privileges needed to terminate Port {} bound to '{}'", port, proc_name),
         _ => "Administrative superuser privileges required".to_string(),
     };
 

@@ -881,6 +881,38 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     KeyCode::Char('r') => {
                         app.tick();
                     }
+                    KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('p') => {
+                        if app.selected_port_index > 0 {
+                            app.selected_port_index -= 1;
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('n') => {
+                        let total = app.network_mgr.summary.listening_ports.len();
+                        if total > 0 && app.selected_port_index + 1 < total {
+                            app.selected_port_index += 1;
+                        }
+                    }
+                    KeyCode::Char('k') | KeyCode::Char('x') | KeyCode::Delete => {
+                        if let Some(port_entry) = app.network_mgr.summary.listening_ports.get(app.selected_port_index) {
+                            let action = ConfirmAction::KillPort {
+                                port: port_entry.local_port,
+                                proto: port_entry.proto.clone(),
+                                proc_name: port_entry.proc_name.clone(),
+                                pid: port_entry.pid,
+                            };
+                            if action.requires_elevation(false) && !app.is_root() {
+                                app.input_mode = InputMode::SudoPasswordModal {
+                                    pending_action: Box::new(action),
+                                    password: String::new(),
+                                    error_msg: None,
+                                };
+                            } else {
+                                app.input_mode = InputMode::ConfirmModal(action);
+                            }
+                        } else {
+                            app.show_toast("No open listening port selected to terminate", true);
+                        }
+                    }
                     _ => {}
                 },
                 AppTab::Processes => match code {

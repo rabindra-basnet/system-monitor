@@ -5,6 +5,7 @@ use sysinfo::{CpuRefreshKind, Disks, MemoryRefreshKind, Networks, RefreshKind, S
 pub const HISTORY_LEN: usize = 60;
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct CoreUsage {
     pub name: String,
     pub usage: f32,

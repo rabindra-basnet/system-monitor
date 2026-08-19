@@ -5,6 +5,7 @@ use crate::system::applications::{ApplicationItem, ApplicationManager};
 use crate::system::autostart::AutostartManager;
 use crate::system::cleaner::SystemCleaner;
 use crate::system::collector::SystemCollector;
+use crate::system::gpu::GpuCollector;
 use crate::system::network::NetworkManager;
 use crate::system::processes::{ProcessItem, ProcessManager, ProcessSortBy};
 use crate::system::sensors::SensorCollector;
@@ -78,6 +79,12 @@ pub enum ConfirmAction {
     ServiceAction(String, String),
     RemoveAutostart(usize, String),
     UninstallApp(ApplicationItem),
+    KillPort {
+        port: u16,
+        proto: String,
+        proc_name: String,
+        pid: Option<u32>,
+    },
 }
 
 impl ConfirmAction {
@@ -90,6 +97,7 @@ impl ConfirmAction {
             ConfirmAction::UninstallApp(app) => {
                 app.source == "APT" || app.source == "Pacman" || app.source == "RPM" || app.source == "Snap" || app.package_id.starts_with("/usr/share")
             }
+            ConfirmAction::KillPort { pid, .. } => pid.map_or(true, |p| p <= 1000),
             _ => false,
         }
     }
@@ -138,8 +146,10 @@ pub struct App {
     pub app_mgr: ApplicationManager,
     pub sensor_collector: SensorCollector,
     pub network_mgr: NetworkManager,
+    pub gpu_collector: GpuCollector,
 
     // Selections
+    pub selected_port_index: usize,
     pub process_list: Vec<ProcessItem>,
     pub process_table_state: TableState,
     pub cleaner_selected_index: usize,
@@ -186,6 +196,7 @@ impl App {
 
         let sensor_collector = SensorCollector::new();
         let network_mgr = NetworkManager::new();
+        let gpu_collector = GpuCollector::new();
 
         Self {
             active_tab: AppTab::Dashboard,
@@ -203,7 +214,9 @@ impl App {
             app_mgr,
             sensor_collector,
             network_mgr,
+            gpu_collector,
 
+            selected_port_index: 0,
             process_list,
             process_table_state,
             cleaner_selected_index: 0,
@@ -239,6 +252,7 @@ impl App {
         self.collector.refresh();
         self.sensor_collector.refresh();
         self.network_mgr.refresh();
+        self.gpu_collector.refresh();
 
         // Refresh process list if active
         if self.active_tab == AppTab::Processes {
@@ -628,6 +642,19 @@ impl App {
                 match self.app_mgr.uninstall_app(&app, pass) {
                     Ok(msg) => self.show_toast(&msg, false),
                     Err(e) => self.show_toast(&e, true),
+                }
+            }
+            ConfirmAction::KillPort { port, proto, proc_name, pid } => {
+                let pwd = self.sudo_password.as_deref();
+                match self.network_mgr.kill_port(port, &proto, pid, pwd) {
+                    Ok(_) => {
+                        self.show_toast(&format!("✔ Terminated port {} ({})", port, proc_name), false);
+                        self.network_mgr.refresh();
+                        self.collector.refresh();
+                    }
+                    Err(e) => {
+                        self.show_toast(&format!("Failed to kill port {}: {}", port, e), true);
+                    }
                 }
             }
         }
