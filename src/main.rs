@@ -560,10 +560,11 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                 // Fallback to proportional division if clicked further to the right
                 if clicked_tab.is_none() && mouse.column < width {
                     let tab_count = tabs.len() as u16;
-                    let tab_width = width / tab_count;
-                    if tab_width > 0 {
-                        let idx = (mouse.column / tab_width).min(tab_count - 1) as usize;
-                        clicked_tab = Some(tabs[idx]);
+                    if let Some(tab_width) = width.checked_div(tab_count) {
+                        if tab_width > 0 {
+                            let idx = (mouse.column / tab_width).min(tab_count - 1) as usize;
+                            clicked_tab = Some(tabs[idx]);
+                        }
                     }
                 }
 
@@ -668,16 +669,13 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                         }
                     }
                 }
-                AppTab::Autostart => {
-                    // Header is at row 7, data rows start at row 9
-                    if mouse.row >= 9 && mouse.row < height.saturating_sub(2) {
-                        let visible_row = (mouse.row - 9) as usize;
-                        let offset = app.autostart_table_state.offset();
-                        let filtered = app.autostart_mgr.filtered_items();
-                        let target_idx = offset + visible_row;
-                        if target_idx < filtered.len() {
-                            app.autostart_table_state.select(Some(target_idx));
-                        }
+                AppTab::Autostart if mouse.row >= 9 && mouse.row < height.saturating_sub(2) => {
+                    let visible_row = (mouse.row - 9) as usize;
+                    let offset = app.autostart_table_state.offset();
+                    let filtered = app.autostart_mgr.filtered_items();
+                    let target_idx = offset + visible_row;
+                    if target_idx < filtered.len() {
+                        app.autostart_table_state.select(Some(target_idx));
                     }
                 }
                 _ => {}
