@@ -73,7 +73,7 @@ impl AutostartManager {
 
         // Sort items alphabetically by name
         self.items
-            .sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+            .sort_by_key(|a| a.name.to_lowercase());
     }
 
     fn parse_desktop_file(path: &Path, is_user: bool) -> Option<AutostartItem> {

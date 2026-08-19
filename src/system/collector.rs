@@ -126,7 +126,7 @@ impl SystemCollector {
     fn calculate_total_net(networks: &Networks) -> (u64, u64) {
         let mut total_rx = 0;
         let mut total_tx = 0;
-        for (_iface, data) in networks.iter() {
+        for data in networks.values() {
             total_rx += data.total_received();
             total_tx += data.total_transmitted();
         }
@@ -222,7 +222,7 @@ impl SystemCollector {
             })
             .collect();
         self.interface_stats
-            .sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+            .sort_by_key(|a| a.name.to_lowercase());
     }
 
     pub fn uptime_formatted(&self) -> String {

@@ -224,7 +224,7 @@ impl NetworkManager {
         listening.sort_by_key(|e| e.local_port);
 
         let mut app_usages: Vec<AppNetworkUsage> = app_stats.into_values().collect();
-        app_usages.sort_by(|a, b| b.socket_count.cmp(&a.socket_count));
+        app_usages.sort_by_key(|b| std::cmp::Reverse(b.socket_count));
 
         let mut top_procs: Vec<(String, usize)> = app_usages
             .iter()

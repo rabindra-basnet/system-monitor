@@ -323,14 +323,8 @@ impl App {
             return;
         }
         let i = match self.process_table_state.selected() {
-            Some(i) => {
-                if i > 0 {
-                    i - 1
-                } else {
-                    0
-                }
-            }
-            None => 0,
+            Some(i) if i > 0 => i - 1,
+            _ => 0,
         };
         self.process_table_state.select(Some(i));
     }
@@ -490,14 +484,8 @@ impl App {
             return;
         }
         let i = match self.network_table_state.selected() {
-            Some(i) => {
-                if i > 0 {
-                    i - 1
-                } else {
-                    0
-                }
-            }
-            None => 0,
+            Some(i) if i > 0 => i - 1,
+            _ => 0,
         };
         self.network_table_state.select(Some(i));
     }
@@ -579,14 +567,8 @@ impl App {
             return;
         }
         let i = match self.service_table_state.selected() {
-            Some(i) => {
-                if i > 0 {
-                    i - 1
-                } else {
-                    0
-                }
-            }
-            None => 0,
+            Some(i) if i > 0 => i - 1,
+            _ => 0,
         };
         self.service_table_state.select(Some(i));
     }
@@ -648,14 +630,8 @@ impl App {
             return;
         }
         let i = match self.autostart_table_state.selected() {
-            Some(i) => {
-                if i > 0 {
-                    i - 1
-                } else {
-                    0
-                }
-            }
-            None => 0,
+            Some(i) if i > 0 => i - 1,
+            _ => 0,
         };
         self.autostart_table_state.select(Some(i));
     }
@@ -697,14 +673,8 @@ impl App {
             return;
         }
         let i = match self.app_table_state.selected() {
-            Some(i) => {
-                if i > 0 {
-                    i - 1
-                } else {
-                    0
-                }
-            }
-            None => 0,
+            Some(i) if i > 0 => i - 1,
+            _ => 0,
         };
         self.app_table_state.select(Some(i));
     }

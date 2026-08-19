@@ -84,6 +84,6 @@ impl SensorCollector {
         }
 
         self.sensors
-            .sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
+            .sort_by_key(|a| a.label.to_lowercase());
     }
 }

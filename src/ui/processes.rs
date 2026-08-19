@@ -139,7 +139,7 @@ fn render_top_eaters_card(f: &mut Frame, app: &App, area: Rect) {
 
     // Calculate Top Memory processes
     let mut top_mem: Vec<&ProcessItem> = app.process_list.iter().collect();
-    top_mem.sort_by(|a, b| b.memory_bytes.cmp(&a.memory_bytes));
+    top_mem.sort_by_key(|b| std::cmp::Reverse(b.memory_bytes));
     let top_3_mem: Vec<&ProcessItem> = top_mem.into_iter().take(3).collect();
 
     // Top CPU Card
