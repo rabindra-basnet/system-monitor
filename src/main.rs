@@ -630,8 +630,8 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                             error_msg: None,
                         };
                     } else {
-                        app.execute_confirm_action(action_clone);
                         app.input_mode = InputMode::Normal;
+                        app.execute_confirm_action(action_clone);
                     }
                 }
                 KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
@@ -657,10 +657,10 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                             error_msg: Some("Password cannot be empty".to_string()),
                         };
                     } else if crate::system::sudo::validate_sudo_password(&password) {
-                        app.sudo_password = Some(password.clone());
-                        app.show_toast("🔒 Sudo authentication successful", false);
-                        app.execute_confirm_action(action);
+                        app.sudo_password = Some(password);
                         app.input_mode = InputMode::Normal;
+                        app.show_toast("🔒 Sudo authenticated — executing action...", false);
+                        app.execute_confirm_action(action);
                     } else {
                         app.input_mode = InputMode::SudoPasswordModal {
                             pending_action: Box::new(action),

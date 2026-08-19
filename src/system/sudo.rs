@@ -9,12 +9,17 @@ pub fn validate_sudo_password(password: &str) -> bool {
     if is_root() {
         return true;
     }
+    if password.is_empty() {
+        return false;
+    }
 
     let mut child = match Command::new("sudo")
-        .args(["-k", "-S", "-p", "", "true"])
+        .args(["-S", "-p", "", "-v"])
+        .env("DEBIAN_FRONTEND", "noninteractive")
+        .env("SYSTEMD_PAGER", "")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
     {
         Ok(c) => c,
@@ -37,6 +42,9 @@ pub fn run_elevated_command(cmd: &str, args: &[&str], sudo_pass: Option<&str>) -
     if is_root() {
         let output = Command::new(cmd)
             .args(args)
+            .env("DEBIAN_FRONTEND", "noninteractive")
+            .env("SYSTEMD_PAGER", "")
+            .env("PAGER", "cat")
             .output()
             .map_err(|e| format!("Execution failed: {}", e))?;
         if output.status.success() {
@@ -55,6 +63,9 @@ pub fn run_elevated_command(cmd: &str, args: &[&str], sudo_pass: Option<&str>) -
 
         let mut child = Command::new("sudo")
             .args(&sudo_args)
+            .env("DEBIAN_FRONTEND", "noninteractive")
+            .env("SYSTEMD_PAGER", "")
+            .env("PAGER", "cat")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
