@@ -6,260 +6,166 @@
     <title>Stasis APT Repository</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-            background: #0d1117;
-            color: #c9d1d9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0b;
+            color: #e4e4e7;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem;
+            padding: 3rem 1.5rem;
         }
-
-        .container {
-            max-width: 900px;
-            width: 100%;
-        }
+        .container { max-width: 960px; width: 100%; }
 
         header {
             text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            margin-bottom: 4rem;
+            padding: 3rem 2rem;
+            background: radial-gradient(ellipse at 50% 0%, rgba(88,166,255,0.08) 0%, transparent 60%);
         }
-
-        .logo {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-
+        .logo { font-size: 5rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 30px rgba(88,166,255,0.3)); }
         h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(90deg, #58a6ff, #bc8cff, #f778ba);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
+            font-size: 3rem; font-weight: 700;
+            background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 50%, #f778ba 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; margin-bottom: 0.75rem; letter-spacing: -0.02em;
         }
-
-        .tagline {
-            color: #8b949e;
-            font-size: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .badges {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
-
-        .badge-rust { background: #b7410e; color: #fff; }
-        .badge-linux { background: #33a852; color: #fff; }
-        .badge-size { background: #8957e5; color: #fff; }
-        .badge-license { background: #1f6feb; color: #fff; }
+        .tagline { color: #71717a; font-size: 1.1rem; margin-bottom: 2rem; }
+        .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+        .badge { padding: 0.35rem 0.9rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+        .badge-rust { background: rgba(183,65,14,0.2); color: #f97316; border: 1px solid rgba(183,65,14,0.3); }
+        .badge-linux { background: rgba(51,168,82,0.15); color: #4ade80; border: 1px solid rgba(51,168,82,0.25); }
+        .badge-size { background: rgba(137,87,229,0.15); color: #c084fc; border: 1px solid rgba(137,87,229,0.25); }
+        .badge-license { background: rgba(31,111,235,0.15); color: #60a5fa; border: 1px solid rgba(31,111,235,0.25); }
 
         .section {
-            margin-bottom: 2rem;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            overflow: hidden;
+            margin-bottom: 2.5rem; border: 1px solid #1c1c1f;
+            border-radius: 16px; background: #111113; overflow: hidden;
         }
-
         .section-header {
-            background: #161b22;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #30363d;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            padding: 1.2rem 1.75rem; border-bottom: 1px solid #1c1c1f;
+            display: flex; align-items: center; gap: 0.75rem;
         }
-
-        .section-header h2 {
-            font-size: 1.1rem;
-            color: #f0f6fc;
-        }
-
-        .section-icon {
-            font-size: 1.3rem;
-        }
-
-        .section-body {
-            padding: 1.5rem;
-        }
+        .section-header h2 { font-size: 1rem; font-weight: 600; color: #f4f4f5; }
+        .section-icon { font-size: 1.2rem; }
+        .section-body { padding: 1.75rem; }
 
         .install-block {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 1.2rem;
-            font-size: 0.85rem;
-            line-height: 1.8;
-            overflow-x: auto;
-            position: relative;
+            background: #0a0a0b; border: 1px solid #1c1c1f; border-radius: 12px;
+            padding: 1.25rem 1.5rem; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem; line-height: 2; overflow-x: auto; position: relative;
         }
-
-        .install-block code {
-            color: #7ee787;
-        }
-
-        .install-block .comment { color: #8b949e; }
-        .install-block .cmd { color: #58a6ff; }
-        .install-block .url { color: #d2a8ff; }
-        .install-block .flag { color: #f778ba; }
-
+        .install-block .comment { color: #52525b; }
+        .install-block .cmd { color: #60a5fa; }
+        .install-block .url { color: #c084fc; }
+        .install-block .flag { color: #f472b6; }
         .copy-btn {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            background: #21262d;
-            border: 1px solid #30363d;
-            color: #8b949e;
-            padding: 0.3rem 0.6rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.7rem;
-            font-family: inherit;
-            transition: all 0.2s;
+            position: absolute; top: 0.75rem; right: 0.75rem;
+            background: #1c1c1f; border: 1px solid #27272a; color: #71717a;
+            padding: 0.4rem 0.75rem; border-radius: 8px; cursor: pointer;
+            font-size: 0.7rem; font-family: 'Inter', sans-serif; font-weight: 500;
+            transition: all 0.15s;
         }
+        .copy-btn:hover { background: #27272a; color: #e4e4e7; }
+        .copy-btn.copied { background: #166534; color: #86efac; border-color: #22c55e; }
 
-        .copy-btn:hover { background: #30363d; color: #c9d1d9; }
-        .copy-btn.copied { background: #238636; color: #fff; border-color: #238636; }
-
-        .packages-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 1rem;
+        /* ── Package Table ─────────────────────────── */
+        .pkg-table {
+            width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem;
         }
-
-        .pkg-card {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 1.2rem;
-            transition: border-color 0.2s;
+        .pkg-table thead th {
+            text-align: left; padding: 0.75rem 1rem; color: #52525b;
+            font-weight: 500; font-size: 0.7rem; text-transform: uppercase;
+            letter-spacing: 0.08em; border-bottom: 1px solid #1c1c1f;
         }
-
-        .pkg-card:hover { border-color: #58a6ff; }
-
-        .pkg-name {
-            color: #58a6ff;
-            font-weight: bold;
-            font-size: 1rem;
-            margin-bottom: 0.3rem;
+        .pkg-table tbody tr { transition: background 0.15s; }
+        .pkg-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+        .pkg-table tbody td {
+            padding: 1rem; border-bottom: 1px solid #141416; vertical-align: middle;
         }
+        .pkg-table tbody tr:last-child td { border-bottom: none; }
 
-        .pkg-version {
-            color: #8b949e;
-            font-size: 0.8rem;
-            margin-bottom: 0.5rem;
+        .pkg-name-cell { display: flex; align-items: center; gap: 0.75rem; }
+        .pkg-icon {
+            width: 42px; height: 42px; border-radius: 10px;
+            background: linear-gradient(135deg, rgba(88,166,255,0.15), rgba(188,140,255,0.15));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; flex-shrink: 0;
         }
-
-        .pkg-arch {
-            display: flex;
-            gap: 0.4rem;
+        .pkg-name { font-weight: 600; color: #f4f4f5; font-size: 0.95rem; }
+        .pkg-desc { color: #52525b; font-size: 0.75rem; margin-top: 0.15rem; }
+        .pkg-version { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #a1a1aa; }
+        .ver-label {
+            color: #52525b; font-size: 0.65rem; text-transform: uppercase;
+            letter-spacing: 0.05em; display: block; margin-bottom: 0.15rem;
         }
-
-        .arch-tag {
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            background: #21262d;
-            color: #7ee787;
-            border: 1px solid #238636;
+        .arch-badges { display: flex; gap: 0.35rem; }
+        .arch-badge {
+            padding: 0.2rem 0.55rem; border-radius: 6px; font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace; font-weight: 500;
+            background: rgba(74,222,128,0.1); color: #4ade80;
+            border: 1px solid rgba(74,222,128,0.15);
+        }
+        .pkg-size {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #a1a1aa;
+        }
+        .pkg-download {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.45rem 1rem; border-radius: 8px;
+            background: rgba(88,166,255,0.1); color: #60a5fa; text-decoration: none;
+            font-size: 0.8rem; font-weight: 500; border: 1px solid rgba(88,166,255,0.15);
+            transition: all 0.15s;
+        }
+        .pkg-download:hover {
+            background: rgba(88,166,255,0.2); border-color: rgba(88,166,255,0.3);
         }
 
         .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 0.8rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;
         }
-
         .feature {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.6rem;
-            padding: 0.8rem;
-            border-radius: 8px;
-            background: #0d1117;
-            border: 1px solid #21262d;
+            display: flex; align-items: flex-start; gap: 0.75rem;
+            padding: 1rem; border-radius: 12px; background: #0a0a0b;
+            border: 1px solid #1c1c1f; transition: border-color 0.15s;
         }
-
-        .feature-icon { font-size: 1.2rem; }
-
-        .feature-text {
-            font-size: 0.8rem;
-            color: #8b949e;
-        }
-
-        .feature-text strong { color: #c9d1d9; }
+        .feature:hover { border-color: #27272a; }
+        .feature-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+        .feature-text { font-size: 0.8rem; color: #71717a; line-height: 1.5; }
+        .feature-text strong { color: #e4e4e7; font-weight: 600; }
 
         .links {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-            flex-wrap: wrap;
+            display: flex; gap: 1rem; justify-content: center;
+            margin-top: 2.5rem; flex-wrap: wrap;
         }
-
         .link-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.6rem 1.2rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: bold;
-            transition: all 0.2s;
-            font-family: inherit;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.7rem 1.4rem; border-radius: 10px; text-decoration: none;
+            font-size: 0.85rem; font-weight: 600; transition: all 0.15s; font-family: inherit;
         }
-
-        .link-primary {
-            background: #238636;
-            color: #fff;
-            border: 1px solid #2ea043;
-        }
-
-        .link-primary:hover { background: #2ea043; }
-
-        .link-secondary {
-            background: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-        }
-
-        .link-secondary:hover { background: #30363d; }
+        .link-primary { background: #166534; color: #86efac; border: 1px solid #22c55e; }
+        .link-primary:hover { background: #15803d; }
+        .link-secondary { background: #1c1c1f; color: #a1a1aa; border: 1px solid #27272a; }
+        .link-secondary:hover { background: #27272a; color: #e4e4e7; }
 
         footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding: 1.5rem;
-            color: #484f58;
-            font-size: 0.75rem;
-            border-top: 1px solid #21262d;
+            text-align: center; margin-top: 3rem; padding: 1.5rem;
+            color: #3f3f46; font-size: 0.75rem; border-top: 1px solid #141416;
         }
-
-        footer a { color: #58a6ff; text-decoration: none; }
+        footer a { color: #60a5fa; text-decoration: none; }
         footer a:hover { text-decoration: underline; }
 
-        @media (max-width: 600px) {
+        @media (max-width: 700px) {
             body { padding: 1rem; }
-            h1 { font-size: 1.8rem; }
-            .logo { font-size: 3rem; }
-            .packages-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 2rem; }
+            .logo { font-size: 3.5rem; }
+            .pkg-table { font-size: 0.8rem; }
+            .pkg-table thead { display: none; }
+            .pkg-table tbody tr {
+                display: flex; flex-direction: column; gap: 0.5rem;
+                padding: 1rem; border-bottom: 1px solid #1c1c1f;
+            }
+            .pkg-table tbody td { padding: 0; border: none; }
         }
     </style>
 </head>
@@ -268,7 +174,7 @@
         <header>
             <div class="logo">󱐋</div>
             <h1>Stasis</h1>
-            <p class="tagline">Lightweight Linux System Monitor, Optimizer & App Uninstaller</p>
+            <p class="tagline">Lightweight Linux System Monitor, Optimizer &amp; App Uninstaller</p>
             <div class="badges">
                 <span class="badge badge-rust">Rust 1.75+</span>
                 <span class="badge badge-linux">Linux</span>
@@ -277,11 +183,11 @@
             </div>
         </header>
 
-        <!-- Quick Install -->
+        <!-- Install -->
         <div class="section">
             <div class="section-header">
                 <span class="section-icon">📦</span>
-                <h2>APT Repository Install</h2>
+                <h2>Quick Install</h2>
             </div>
             <div class="section-body">
                 <div class="install-block" id="install-block">
@@ -293,28 +199,60 @@
 <span class="cmd">echo</span> <span class="url">"deb [signed-by=/usr/share/keyrings/stasis.gpg] https://rabindra-basnet.github.io/system-monitor stable main"</span> | <span class="cmd">sudo</span> tee /etc/apt/sources.list.d/stasis.list
 
 <span class="comment"># Install</span>
-<span class="cmd">sudo</span> apt update && <span class="cmd">sudo</span> apt install stasis
+<span class="cmd">sudo</span> apt update &amp;&amp; <span class="cmd">sudo</span> apt install stasis
                 </div>
             </div>
         </div>
 
-        <!-- Available Packages -->
+        <!-- Packages -->
         <div class="section">
             <div class="section-header">
                 <span class="section-icon">📋</span>
                 <h2>Available Packages</h2>
             </div>
-            <div class="section-body">
-                <div class="packages-grid">
-                    <div class="pkg-card">
-                        <div class="pkg-name">stasis</div>
-                        <div class="pkg-version">v0.2.0 &mdash; Latest Release</div>
-                        <div class="pkg-arch">
-                            <span class="arch-tag">amd64</span>
-                            <span class="arch-tag">arm64</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="section-body" style="padding: 0;">
+                <table class="pkg-table">
+                    <thead>
+                        <tr>
+                            <th>Package</th>
+                            <th>Version</th>
+                            <th>Architecture</th>
+                            <th>Size</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="pkg-name-cell">
+                                    <div class="pkg-icon">󱐋</div>
+                                    <div>
+                                        <div class="pkg-name">stasis</div>
+                                        <div class="pkg-desc">System Monitor, Optimizer &amp; Uninstaller</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="pkg-version">
+                                    <span class="ver-label">Latest</span>
+                                    0.2.0
+                                </div>
+                            </td>
+                            <td>
+                                <div class="arch-badges">
+                                    <span class="arch-badge">amd64</span>
+                                    <span class="arch-badge">arm64</span>
+                                </div>
+                            </td>
+                            <td><span class="pkg-size">~1.2 MB</span></td>
+                            <td>
+                                <a href="https://github.com/rabindra-basnet/system-monitor/releases/latest" class="pkg-download">
+                                    Download
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -328,10 +266,10 @@
                 <div class="features-grid">
                     <div class="feature">
                         <span class="feature-icon">󰨇</span>
-                        <div class="feature-text"><strong>Dashboard</strong><br>CPU, RAM, GPU, Network sparklines, thermal sensors</div>
+                        <div class="feature-text"><strong>Dashboard</strong><br>CPU, RAM, GPU, network sparklines, thermal sensors</div>
                     </div>
                     <div class="feature">
-                        <span class="feature-icon"></span>
+                        <span class="feature-icon">        </span>
                         <div class="feature-text"><strong>Process Manager</strong><br>Kill, terminate, pause, sort, search, clipboard copy</div>
                     </div>
                     <div class="feature">
@@ -339,7 +277,7 @@
                         <div class="feature-text"><strong>System Cleaner</strong><br>Cache, thumbnails, crash dumps, logs, trash</div>
                     </div>
                     <div class="feature">
-                        <span class="feature-icon"></span>
+                        <span class="feature-icon">        </span>
                         <div class="feature-text"><strong>systemd Services</strong><br>Start, stop, restart, enable, disable units</div>
                     </div>
                     <div class="feature">
@@ -362,17 +300,10 @@
             </div>
         </div>
 
-        <!-- Links -->
         <div class="links">
-            <a href="https://github.com/rabindra-basnet/system-monitor" class="link-btn link-primary">
-                ⭐ GitHub Repository
-            </a>
-            <a href="https://github.com/rabindra-basnet/system-monitor/releases" class="link-btn link-secondary">
-                📥 All Releases
-            </a>
-            <a href="https://github.com/rabindra-basnet/system-monitor/blob/master/docs/keygeneration.md" class="link-btn link-secondary">
-                🔐 Key Generation Docs
-            </a>
+            <a href="https://github.com/rabindra-basnet/system-monitor" class="link-btn link-primary">⭐ GitHub Repository</a>
+            <a href="https://github.com/rabindra-basnet/system-monitor/releases" class="link-btn link-secondary">📥 All Releases</a>
+            <a href="https://github.com/rabindra-basnet/system-monitor/blob/master/docs/keygeneration.md" class="link-btn link-secondary">🔐 Key Generation</a>
         </div>
 
         <footer>
@@ -391,15 +322,11 @@ echo "deb [signed-by=/usr/share/keyrings/stasis.gpg] https://rabindra-basnet.git
 
 # Install
 sudo apt update && sudo apt install stasis`;
-
             navigator.clipboard.writeText(text).then(() => {
                 const btn = document.querySelector('.copy-btn');
                 btn.textContent = 'Copied!';
                 btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = 'Copy';
-                    btn.classList.remove('copied');
-                }, 2000);
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
             });
         }
     </script>
