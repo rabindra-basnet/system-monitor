@@ -16,6 +16,12 @@ pub struct SensorCollector {
     pub sensors: Vec<SensorItem>,
 }
 
+impl Default for SensorCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SensorCollector {
     pub fn new() -> Self {
         let components = Components::new_with_refreshed_list();

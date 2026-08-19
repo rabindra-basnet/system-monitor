@@ -16,62 +16,32 @@
 
 ---
 
-## 🚀 Key Modules (Stacer Suite)
+## 📦 Installation
 
-1. **󰨇 Dashboard & Hardware Resources**: Real-time CPU, RAM, Swap, Disk gauges, per-core breakdown, network traffic sparklines, hardware thermal sensors, and 60-second time-series history graphs.
-2. ** Process Manager**: Interactive process inspection, multi-column sorting, live search filter, protected system process dimming, and safe signals (`SIGKILL`, `SIGTERM`, `SIGSTOP`, `SIGCONT`).
-3. **󰃢 System Cleaner**: Multi-category cache cleaner (Package Caches, `~/.cache`, Thumbnails, Crash dumps, System Logs, Trash) with safe user cache defaults and elevated root wiping.
-4. ** systemd Services**: Manage system-wide & user (`--user`) service units (Start, Stop, Restart, Enable, Disable) with state filters.
-5. **󱑞 Startup Applications**: Toggle enabled/disabled status of desktop autostart apps, create new `.desktop` entries, or remove entries.
-6. **󰏖 Applications & Package Uninstaller**: Discover installed packages across APT, Pacman, RPM, Flatpak, Snap, and Desktop apps with size inspection, safety protection locks, and removal.
-7. **🔒 System Safety Locks & Sudo Authentication**: Hard locks prevent accidental uninstallation of critical OS packages or termination of PID 1, with in-app masked sudo password elevation.
-8. **🎨 Theme Engine**: 5 built-in palettes (**Cyberpunk**, **Dracula**, **Nord**, **Monokai**, **Gruvbox**).
-9. **🖱️ Full Mouse Support**: Seamless tab switching, scroll wheel list navigation, search focus, cleaner toggles, and modal button clicks.
+### APT Repository (Debian/Ubuntu)
 
----
+```bash
+# Import the signing key
+wget -qO - https://rabindra-basnet.github.io/system-monitor/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/stasis.gpg
 
-## ⌨️ Keyboard & Mouse Controls
+# Add the repository
+echo "deb [signed-by=/usr/share/keyrings/stasis.gpg] https://rabindra-basnet.github.io/system-monitor stable main" | sudo tee /etc/apt/sources.list.d/stasis.list
 
-| Key / Mouse | Scope | Action |
-| :--- | :--- | :--- |
-| `1` - `6` / `F1` - `F6` | Global | Switch directly to tabs 1 through 6 |
-| `Left Click` (Header) | Global | Switch tabs directly by clicking tab title |
-| `Tab` / `Shift+Tab` | Global | Cycle forwards / backwards through tabs |
-| `Scroll Wheel` | Lists | Scroll through processes, services, apps, and autostart entries |
-| `t` | Global | Cycle color theme (Cyberpunk → Dracula → Nord → Monokai → Gruvbox) |
-| `r` | Global | Force immediate telemetry refresh |
-| `?` | Global | Toggle Help & Shortcuts modal |
-| `q` / `Ctrl+C` | Global | Quit application cleanly |
-| `j` / `k` or `↓` / `↑` | Navigation | Move cursor / selection down and up |
-| `/` | Search | Open live substring search (Processes, Services, Autostart, Apps) |
-| `s` / `d` | Processes | Cycle sort column (`s`) / Invert sort order (`d`) |
-| `K` / `x` / `Del` | Processes | Kill process (`SIGKILL` with confirmation) |
-| `t` | Processes | Terminate process (`SIGTERM` with confirmation) |
-| `p` / `c` | Processes | Pause (`SIGSTOP`) / Continue (`SIGCONT`) |
-| `Space` / `Click` | Cleaner | Toggle selection checkbox for active cache category |
-| `a` | Cleaner | Select All / Deselect All categories |
-| `s` | Cleaner | Scan filesystem paths for reclaimable sizes |
-| `c` / `Enter` | Cleaner | Clean selected categories (prompts sudo if needed) |
-| `u` | Services | Toggle between System and User service units |
-| `f` | Services | Cycle filter state (`All` → `Active` → `Inactive` → `Failed`) |
-| `s` / `x` / `r` | Services | Start / Stop / Restart service unit |
-| `e` / `d` | Services | Enable / Disable service unit at boot |
-| `n` | Autostart | Add new startup application |
-| `d` / `Delete` | Autostart | Delete selected user startup entry |
-| `u` / `Delete` | Applications | Uninstall / remove selected package |
-| `f` | Applications | Cycle package source filter (All → System → Desktop → Flatpak → Snap) |
-| `s` / `d` | Applications | Cycle sort (Size → Name → Source) / Invert direction |
+# Install
+sudo apt update && sudo apt install stasis
+```
 
----
+### Build from Source
 
-## 🛠️ Build & Installation
-
-### Quick Install Script
 ```bash
 git clone https://github.com/rabindra-basnet/system-monitor.git
 cd system-monitor
 ./install.sh
 ```
+
+### Download Release
+
+Grab the latest `.deb` or `.tar.gz` from [GitHub Releases](https://github.com/rabindra-basnet/system-monitor/releases).
 
 ---
 
@@ -93,6 +63,78 @@ stasis -s        # systemd Services
 # Run non-interactive telemetry diagnostic check:
 stasis --test
 ```
+
+---
+
+## 🚀 Key Modules (Stacer Suite)
+
+1. **󰨇 Dashboard & Hardware Resources**: Real-time CPU, RAM, Swap, Disk gauges, per-core breakdown, network traffic sparklines, hardware thermal sensors, and 60-second time-series history graphs.
+2. ** Process Manager**: Interactive process inspection, multi-column sorting, live search filter, protected system process dimming, and safe signals (`SIGKILL`, `SIGTERM`, `SIGSTOP`, `SIGCONT`).
+3. **󰃢 System Cleaner**: Multi-category cache cleaner (Package Caches, `~/.cache`, Thumbnails, Crash dumps, System Logs, Trash) with safe user cache defaults and elevated root wiping.
+4. ** systemd Services**: Manage system-wide & user (`--user`) service units (Start, Stop, Restart, Enable, Disable) with state filters.
+5. **󱑞 Startup Applications**: Toggle enabled/disabled status of desktop autostart apps, create new `.desktop` entries, or remove entries.
+6. **󰏖 Applications & Package Uninstaller**: Discover installed packages across APT, Pacman, RPM, Flatpak, Snap, and Desktop apps with size inspection, safety protection locks, and removal.
+7. **🔒 System Safety Locks & Sudo Authentication**: Hard locks prevent accidental uninstallation of critical OS packages or termination of PID 1, with in-app masked sudo password elevation.
+8. **🎨 Theme Engine**: 5 built-in palettes (**Cyberpunk**, **Dracula**, **Nord**, **Monokai**, **Gruvbox**).
+9. **🖱️ Full Mouse Support**: Seamless tab switching, scroll wheel list navigation, search focus, cleaner toggles, and modal button clicks.
+
+---
+
+## ⌨️ Keyboard & Mouse Controls
+
+| Key / Mouse | Scope | Action |
+| :--- | :--- | :--- |
+| `1` - `7` / `F1` - `F7` | Global | Switch directly to tabs 1 through 7 |
+| `Left Click` (Header) | Global | Switch tabs directly by clicking tab title |
+| `Tab` / `Shift+Tab` | Global | Cycle forwards / backwards through tabs |
+| `Scroll Wheel` | Lists | Scroll through processes, services, apps, and autostart entries |
+| `t` | Global | Cycle color theme (Cyberpunk → Dracula → Nord → Monokai → Gruvbox) |
+| `r` | Global | Force immediate telemetry refresh |
+| `?` | Global | Toggle Help & Shortcuts modal |
+| `q` / `Ctrl+C` | Global | Quit application cleanly |
+| `j` / `k` or `↓` / `↑` | Navigation | Move cursor / selection down and up |
+| `/` | Search | Open live substring search (Processes, Services, Autostart, Apps, Network) |
+| `s` / `d` | Processes | Cycle sort column (`s`) / Invert sort order (`d`) |
+| `K` / `x` / `Del` | Processes | Kill process (`SIGKILL` with confirmation) |
+| `t` | Processes | Terminate process (`SIGTERM` with confirmation) |
+| `p` / `c` | Processes | Pause (`SIGSTOP`) / Continue (`SIGCONT`) |
+| `k` / `K` / `x` / `Del` | Network | Kill/stop process owning selected port (sudo elevation for system ports) |
+| `f` | Network | Cycle filter (All → Listening → Established → TCP → UDP) |
+| `y` | Network | Copy selected socket details to clipboard |
+| `Space` / `Click` | Cleaner | Toggle selection checkbox for active cache category |
+| `a` | Cleaner | Select All / Deselect All categories |
+| `s` | Cleaner | Scan filesystem paths for reclaimable sizes |
+| `c` / `Enter` | Cleaner | Clean selected categories (prompts sudo if needed) |
+| `u` | Services | Toggle between System and User service units |
+| `f` | Services | Cycle filter state (`All` → `Active` → `Inactive` → `Failed`) |
+| `s` / `x` / `r` | Services | Start / Stop / Restart service unit |
+| `e` / `d` | Services | Enable / Disable service unit at boot |
+| `n` | Autostart | Add new startup application |
+| `d` / `Delete` | Autostart | Delete selected user startup entry |
+| `u` / `Delete` | Applications | Uninstall / remove selected package |
+| `f` | Applications | Cycle package source filter (All → System → Desktop → Flatpak → Snap) |
+| `s` / `d` | Applications | Cycle sort (Size → Name → Source) / Invert direction |
+
+---
+
+## 🔧 Development
+
+### CI/CD
+
+- **CI**: Runs on every push/PR — format check, clippy lint, build, and 12 integration tests
+- **Release**: Push a tag (`git tag v0.2.0 && git push --tags`) to build `.deb` packages, sign with GPG, publish to GitHub Releases and APT repository
+
+### APT Repository Publishing
+
+See [docs/keygeneration.md](docs/keygeneration.md) for GPG key setup required for APT repository signing.
+
+### Tech Stack
+
+- **Language**: Rust (edition 2021)
+- **TUI**: ratatui + crossterm
+- **System**: sysinfo, libc, walkdir
+- **GUI**: Native GTK3 + VTE via dynamic `dlopen` (zero Python)
+- **Themes**: Cyberpunk, Dracula, Nord, Monokai, Gruvbox
 
 ---
 

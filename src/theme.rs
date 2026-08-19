@@ -56,11 +56,11 @@ impl Theme {
                 mode,
                 bg: Color::Rgb(15, 15, 26),
                 fg: Color::Rgb(240, 240, 255),
-                accent: Color::Rgb(0, 240, 255),       // Neon Cyan
-                secondary: Color::Rgb(255, 0, 127),   // Neon Pink
-                success: Color::Rgb(0, 255, 136),     // Neon Green
-                warning: Color::Rgb(255, 215, 0),     // Neon Gold
-                danger: Color::Rgb(255, 50, 75),      // Hot Red
+                accent: Color::Rgb(0, 240, 255),    // Neon Cyan
+                secondary: Color::Rgb(255, 0, 127), // Neon Pink
+                success: Color::Rgb(0, 255, 136),   // Neon Green
+                warning: Color::Rgb(255, 215, 0),   // Neon Gold
+                danger: Color::Rgb(255, 50, 75),    // Hot Red
                 border: Color::Rgb(50, 50, 80),
                 border_active: Color::Rgb(0, 240, 255),
                 card_bg: Color::Rgb(24, 24, 40),
@@ -96,16 +96,16 @@ impl Theme {
                 card_bg: Color::Rgb(59, 66, 82),
                 selected_bg: Color::Rgb(76, 86, 106),
                 text_dim: Color::Rgb(145, 155, 175),
-                },
+            },
             ThemeMode::Monokai => Self {
                 mode,
                 bg: Color::Rgb(39, 40, 34),
                 fg: Color::Rgb(248, 248, 242),
-                accent: Color::Rgb(102, 217, 239),    // Cyan
-                secondary: Color::Rgb(249, 38, 114),  // Magenta
-                success: Color::Rgb(166, 226, 46),    // Green
-                warning: Color::Rgb(253, 151, 31),    // Orange
-                danger: Color::Rgb(249, 38, 114),     // Red
+                accent: Color::Rgb(102, 217, 239),   // Cyan
+                secondary: Color::Rgb(249, 38, 114), // Magenta
+                success: Color::Rgb(166, 226, 46),   // Green
+                warning: Color::Rgb(253, 151, 31),   // Orange
+                danger: Color::Rgb(249, 38, 114),    // Red
                 border: Color::Rgb(73, 72, 62),
                 border_active: Color::Rgb(166, 226, 46),
                 card_bg: Color::Rgb(50, 51, 44),
@@ -116,11 +116,11 @@ impl Theme {
                 mode,
                 bg: Color::Rgb(40, 40, 40),
                 fg: Color::Rgb(235, 219, 178),
-                accent: Color::Rgb(254, 128, 25),     // Bright Orange
+                accent: Color::Rgb(254, 128, 25), // Bright Orange
                 secondary: Color::Rgb(211, 134, 155), // Bright Purple
-                success: Color::Rgb(184, 187, 38),    // Bright Green
-                warning: Color::Rgb(250, 189, 47),    // Bright Yellow
-                danger: Color::Rgb(251, 73, 52),      // Bright Red
+                success: Color::Rgb(184, 187, 38), // Bright Green
+                warning: Color::Rgb(250, 189, 47), // Bright Yellow
+                danger: Color::Rgb(251, 73, 52),  // Bright Red
                 border: Color::Rgb(80, 73, 69),
                 border_active: Color::Rgb(254, 128, 25),
                 card_bg: Color::Rgb(50, 48, 47),

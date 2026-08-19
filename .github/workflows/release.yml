@@ -1,4 +1,4 @@
-name: Release & Build Packages
+name: Release & APT Repository
 
 on:
   push:
@@ -7,12 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v0.1.0)'
+        description: 'Release version tag (e.g. v0.2.0)'
         required: false
-        default: 'v0.1.0'
+        default: 'v0.2.0'
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build-and-package:
@@ -24,10 +26,6 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             arch: x86_64
-            deb_arch: amd64
-            cross: false
-          - target: x86_64-unknown-linux-musl
-            arch: x86_64-musl
             deb_arch: amd64
             cross: false
           - target: aarch64-unknown-linux-gnu
@@ -43,10 +41,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Install musl-tools
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Install cross for ARM64
         if: matrix.cross
@@ -64,7 +58,7 @@ jobs:
         run: |
           VERSION="${{ github.ref_name }}"
           if [ -z "$VERSION" ] || [ "$VERSION" = "master" ] || [ "$VERSION" = "main" ]; then
-            VERSION="${{ github.event.inputs.version || 'v0.1.0' }}"
+            VERSION="${{ github.event.inputs.version || 'v0.2.0' }}"
           fi
           
           DIST_DIR="stasis-${VERSION}-${{ matrix.arch }}"
@@ -84,7 +78,7 @@ jobs:
         run: |
           VERSION="${{ github.ref_name }}"
           if [ -z "$VERSION" ] || [ "$VERSION" = "master" ] || [ "$VERSION" = "main" ]; then
-            VERSION="${{ github.event.inputs.version || 'v0.1.0' }}"
+            VERSION="${{ github.event.inputs.version || 'v0.2.0' }}"
           fi
           RAW_VERSION="${VERSION#v}"
           
@@ -108,8 +102,13 @@ Section: utils
 Priority: optional
 Architecture: DEB_ARCH_PLACEHOLDER
 Maintainer: Rabindra Basnet <rabindra@users.noreply.github.com>
+Depends: libgtk-3-0 (>= 3.24), libvte-2.91-0 (>= 0.52)
+Recommends: fzf, fd-find, ripgrep, eza, bat, zoxide
 Description: Lightweight Linux system monitor, cleaner, and optimizer
- Stasis is a 100% pure Rust native Linux system monitor, cleaner, and optimizer (Stacer alternative).
+ Stasis is a 100% pure Rust native Linux system monitor, cleaner,
+ and optimizer (Stacer alternative). Features real-time CPU/RAM/GPU
+ monitoring, process management, systemd service control, system
+ cache cleaning, package uninstallation, and a GTK3 native GUI.
 CONTROL_EOF
           
           sed -i "s/RAW_VERSION_PLACEHOLDER/${RAW_VERSION}/" "${DEB_DIR}/DEBIAN/control"
@@ -128,6 +127,16 @@ exit 0
 POSTINST_EOF
           chmod 755 "${DEB_DIR}/DEBIAN/postinst"
           
+          cat << 'PRERM_EOF' > "${DEB_DIR}/DEBIAN/prerm"
+#!/bin/sh
+set -e
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+exit 0
+PRERM_EOF
+          chmod 755 "${DEB_DIR}/DEBIAN/prerm"
+
           dpkg-deb --build --root-owner-group "${DEB_DIR}"
 
       - name: Upload Artifacts
@@ -138,7 +147,7 @@ POSTINST_EOF
             *.tar.gz
             *.deb
 
-  create-release:
+  publish-github-release:
     name: Publish GitHub Release
     needs: build-and-package
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -155,9 +164,132 @@ POSTINST_EOF
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.deb" \) -exec cp {} release-assets/ \;
           ls -la release-assets/
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
           generate_release_notes: true
           tag_name: ${{ github.ref_name || github.event.inputs.version }}
+
+  publish-apt-repo:
+    name: Publish APT Repository
+    needs: build-and-package
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Download all .deb artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: debs-raw
+
+      - name: Collect all .deb packages
+        run: |
+          mkdir -p pool
+          find debs-raw -name "*.deb" -exec cp {} pool/ \;
+          echo "=== Collected .deb packages ==="
+          ls -la pool/
+
+      - name: Import GPG key for signing
+        run: |
+          echo "${{ secrets.APT_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg --list-keys --keyid-format long
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+
+      - name: Generate APT Repository metadata
+        run: |
+          sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils
+
+          # Create binary-amd64 and binary-arm64 pool directories
+          mkdir -p dists/stable/main/binary-amd64
+          mkdir -p dists/stable/main/binary-arm64
+
+          # Move debs to architecture-specific pool dirs
+          for deb in pool/*.deb; do
+            ARCH=$(dpkg-deb --field "$deb" Architecture)
+            if [ "$ARCH" = "amd64" ]; then
+              mkdir -p dists/stable/main/binary-amd64
+              cp "$deb" dists/stable/main/binary-amd64/ || true
+            elif [ "$ARCH" = "arm64" ]; then
+              mkdir -p dists/stable/main/binary-arm64
+              cp "$deb" dists/stable/main/binary-arm64/ || true
+            fi
+          done
+
+          # Generate Packages files for each architecture
+          for ARCH_DIR in dists/stable/main/binary-*; do
+            ARCH=$(basename "$ARCH_DIR" | sed 's/binary-//')
+            cd "$ARCH_DIR"
+            dpkg-scanpackages . /dev/null > Packages 2>/dev/null || true
+            gzip -k -f Packages
+            cd -
+
+            # Sign Packages
+            gpg --default-key ${{ secrets.APT_GPG_KEY_ID }} \
+                --batch --yes --armor \
+                --output "${ARCH_DIR}/Packages.gpg" \
+                --detsign "${ARCH_DIR}/Packages"
+
+            gpg --default-key ${{ secrets.APT_GPG_KEY_ID }} \
+                --batch --yes --armor \
+                --output "${ARCH_DIR}/InRelease" \
+                --clearsign "${ARCH_DIR}/Packages"
+          done
+
+          # Generate Release file
+          CODENAME="stable"
+          ARCHITECTURES="amd64 arm64"
+          SUITES="main"
+
+          cat << RELEASE_EOF > dists/stable/Release
+Origin: Stasis
+Label: Stasis APT Repository
+Suite: ${CODENAME}
+Codename: ${CODENAME}
+Architectures: ${ARCHITECTURES}
+Components: ${SUITES}
+Description: Official APT repository for Stasis - Linux System Monitor & Optimizer
+Date: $(date -Ru)
+RELEASE_EOF
+
+          # Append SHA256 checksums
+          echo "SHA256:" >> dists/stable/Release
+          find dists/stable/main -type f \( -name "Packages" -o -name "Packages.gz" -o -name "Packages.gpg" -o -name "InRelease" \) | sort | while read FILE; do
+            SIZE=$(stat -c%s "$FILE")
+            HASH=$(sha256sum "$FILE" | awk '{print $1}')
+            REL_PATH="${FILE#dists/stable/}"
+            printf " %s %s %s\n" "$HASH" "$SIZE" "$REL_PATH" >> dists/stable/Release
+          done
+
+          # Sign Release file
+          gpg --default-key ${{ secrets.APT_GPG_KEY_ID }} \
+              --batch --yes --armor \
+              --output dists/stable/Release.gpg \
+              --detsign dists/stable/Release
+
+          gpg --default-key ${{ secrets.APT_GPG_KEY_ID }} \
+              --batch --yes --armor \
+              --output dists/stable/InRelease \
+              --clearsign dists/stable/Release
+
+          # Export public key
+          gpg --armor --export ${{ secrets.APT_GPG_KEY_ID }} > key.gpg
+
+          echo "=== APT Repository structure ==="
+          find dists/ -type f | head -30
+          echo "=== Pool ==="
+          ls pool/
+
+      - name: Commit and push APT repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Update APT repository for ${{ github.ref_name || github.event.inputs.version }}"
+          git push origin gh-pages

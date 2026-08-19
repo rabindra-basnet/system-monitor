@@ -1,5 +1,5 @@
-use std::time::{Duration, Instant};
 use ratatui::widgets::TableState;
+use std::time::{Duration, Instant};
 
 use crate::system::applications::{ApplicationItem, ApplicationManager};
 use crate::system::autostart::AutostartManager;
@@ -95,14 +95,18 @@ pub enum ConfirmAction {
 impl ConfirmAction {
     pub fn requires_elevation(&self, user_mode_services: bool) -> bool {
         match self {
-            ConfirmAction::CleanCategories(cats, _) => {
-                cats.iter().any(|c| c.contains("Package") || c.contains("Crash") || c.contains("Log"))
-            }
+            ConfirmAction::CleanCategories(cats, _) => cats
+                .iter()
+                .any(|c| c.contains("Package") || c.contains("Crash") || c.contains("Log")),
             ConfirmAction::ServiceAction(_, _) => !user_mode_services,
             ConfirmAction::UninstallApp(app) => {
-                app.source == "APT" || app.source == "Pacman" || app.source == "RPM" || app.source == "Snap" || app.package_id.starts_with("/usr/share")
+                app.source == "APT"
+                    || app.source == "Pacman"
+                    || app.source == "RPM"
+                    || app.source == "Snap"
+                    || app.package_id.starts_with("/usr/share")
             }
-            ConfirmAction::KillPort { pid, .. } => pid.map_or(true, |p| p <= 1000),
+            ConfirmAction::KillPort { pid, .. } => pid.is_none_or(|p| p <= 1000),
             _ => false,
         }
     }
@@ -164,6 +168,12 @@ pub struct App {
 
     // Search query buffer
     pub search_input: String,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl App {
@@ -283,7 +293,8 @@ impl App {
         // Adjust selection if out of bounds
         if let Some(selected) = self.process_table_state.selected() {
             if selected >= self.process_list.len() && !self.process_list.is_empty() {
-                self.process_table_state.select(Some(self.process_list.len() - 1));
+                self.process_table_state
+                    .select(Some(self.process_list.len() - 1));
             }
         } else if !self.process_list.is_empty() {
             self.process_table_state.select(Some(0));
@@ -345,10 +356,7 @@ impl App {
     pub fn cycle_process_sort(&mut self) {
         self.process_mgr.cycle_sort();
         self.refresh_processes();
-        self.show_toast(
-            &format!("Sorted by: {:?}", self.process_mgr.sort_by),
-            false,
-        );
+        self.show_toast(&format!("Sorted by: {:?}", self.process_mgr.sort_by), false);
     }
 
     pub fn toggle_process_sort_direction(&mut self) {
@@ -357,7 +365,11 @@ impl App {
         self.show_toast(
             &format!(
                 "Sort direction: {}",
-                if self.process_mgr.sort_descending { "Descending" } else { "Ascending" }
+                if self.process_mgr.sort_descending {
+                    "Descending"
+                } else {
+                    "Ascending"
+                }
             ),
             false,
         );
@@ -377,7 +389,10 @@ impl App {
                 p.cmd
             );
             if copy_to_clipboard(&copy_str) {
-                self.show_toast(&format!("✔ Copied PID {} ({}) to clipboard", p.pid, p.name), false);
+                self.show_toast(
+                    &format!("✔ Copied PID {} ({}) to clipboard", p.pid, p.name),
+                    false,
+                );
             } else {
                 self.show_toast("Clipboard utility (wl-copy/xclip) not found", true);
             }
@@ -391,10 +406,10 @@ impl App {
 
     // Cleaner navigation
     pub fn next_cleaner_category(&mut self) {
-        if !self.cleaner.categories.is_empty() {
-            if self.cleaner_selected_index + 1 < self.cleaner.categories.len() {
-                self.cleaner_selected_index += 1;
-            }
+        if !self.cleaner.categories.is_empty()
+            && self.cleaner_selected_index + 1 < self.cleaner.categories.len()
+        {
+            self.cleaner_selected_index += 1;
         }
     }
 
@@ -525,7 +540,13 @@ impl App {
                     s.local_port, s.proto, s.state, s.local_addr, s.local_port, s.peer_addr, s.peer_port, s.proc_name, s.pid
                 );
                 if copy_to_clipboard(&copy_str) {
-                    self.show_toast(&format!("✔ Copied Port {} ({}) details to clipboard", s.local_port, s.proc_name), false);
+                    self.show_toast(
+                        &format!(
+                            "✔ Copied Port {} ({}) details to clipboard",
+                            s.local_port, s.proc_name
+                        ),
+                        false,
+                    );
                 } else {
                     self.show_toast("Clipboard utility not found", true);
                 }
@@ -583,7 +604,11 @@ impl App {
         self.show_toast(
             &format!(
                 "Service Mode: {}",
-                if self.service_mgr.user_mode { "User (--user)" } else { "System (root)" }
+                if self.service_mgr.user_mode {
+                    "User (--user)"
+                } else {
+                    "System (root)"
+                }
             ),
             false,
         );
@@ -694,29 +719,41 @@ impl App {
         match action {
             ConfirmAction::KillProcess(pid, name) => {
                 match ProcessManager::kill_process(pid) {
-                    Ok(()) => self.show_toast(&format!("Killed process '{}' (PID: {})", name, pid), false),
+                    Ok(()) => {
+                        self.show_toast(&format!("Killed process '{}' (PID: {})", name, pid), false)
+                    }
                     Err(e) => self.show_toast(&format!("Failed to kill PID {}: {}", pid, e), true),
                 }
                 self.refresh_processes();
             }
             ConfirmAction::TerminateProcess(pid, name) => {
                 match ProcessManager::terminate_process(pid) {
-                    Ok(()) => self.show_toast(&format!("Terminated process '{}' (PID: {})", name, pid), false),
-                    Err(e) => self.show_toast(&format!("Failed to terminate PID {}: {}", pid, e), true),
+                    Ok(()) => self.show_toast(
+                        &format!("Terminated process '{}' (PID: {})", name, pid),
+                        false,
+                    ),
+                    Err(e) => {
+                        self.show_toast(&format!("Failed to terminate PID {}: {}", pid, e), true)
+                    }
                 }
                 self.refresh_processes();
             }
             ConfirmAction::StopProcess(pid, name) => {
                 match ProcessManager::stop_process(pid) {
-                    Ok(()) => self.show_toast(&format!("Paused process '{}' (PID: {})", name, pid), false),
+                    Ok(()) => {
+                        self.show_toast(&format!("Paused process '{}' (PID: {})", name, pid), false)
+                    }
                     Err(e) => self.show_toast(&format!("Failed to pause PID {}: {}", pid, e), true),
                 }
                 self.refresh_processes();
             }
             ConfirmAction::ResumeProcess(pid, name) => {
                 match ProcessManager::resume_process(pid) {
-                    Ok(()) => self.show_toast(&format!("Resumed process '{}' (PID: {})", name, pid), false),
-                    Err(e) => self.show_toast(&format!("Failed to resume PID {}: {}", pid, e), true),
+                    Ok(()) => self
+                        .show_toast(&format!("Resumed process '{}' (PID: {})", name, pid), false),
+                    Err(e) => {
+                        self.show_toast(&format!("Failed to resume PID {}: {}", pid, e), true)
+                    }
                 }
                 self.refresh_processes();
             }
@@ -751,11 +788,19 @@ impl App {
                     Err(e) => self.show_toast(&e, true),
                 }
             }
-            ConfirmAction::KillPort { port, proto, proc_name, pid } => {
+            ConfirmAction::KillPort {
+                port,
+                proto,
+                proc_name,
+                pid,
+            } => {
                 let pwd = self.sudo_password.as_deref();
                 match self.network_mgr.kill_port(port, &proto, pid, pwd) {
                     Ok(_) => {
-                        self.show_toast(&format!("✔ Terminated port {} ({})", port, proc_name), false);
+                        self.show_toast(
+                            &format!("✔ Terminated port {} ({})", port, proc_name),
+                            false,
+                        );
                         self.network_mgr.refresh();
                         self.collector.refresh();
                     }

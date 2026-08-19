@@ -37,22 +37,56 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         AppSortBy::Name => "Name",
         AppSortBy::Source => "Source",
     };
-    let dir_arrow = if app.app_mgr.sort_descending { "▼" } else { "▲" };
+    let dir_arrow = if app.app_mgr.sort_descending {
+        "▼"
+    } else {
+        "▲"
+    };
 
     let search_display = if app.app_mgr.search_query.is_empty() {
         Span::styled("None (Press '/' to search)", theme.dim_style())
     } else {
-        Span::styled(&app.app_mgr.search_query, Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
+        Span::styled(
+            &app.app_mgr.search_query,
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        )
     };
 
     let line = Line::from(vec![
-        Span::styled(" 󰄲 Source [f]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(app.app_mgr.source_filter.label(), Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " 󰄲 Source [f]: ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            app.app_mgr.source_filter.label(),
+            Style::default()
+                .fg(theme.secondary)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   |   "),
-        Span::styled(" 󰒺 Sort [s]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{} {}", sort_name, dir_arrow), Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " 󰒺 Sort [s]: ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("{} {}", sort_name, dir_arrow),
+            Style::default()
+                .fg(theme.success)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   |   "),
-        Span::styled("  Search [/]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "  Search [/]: ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
         search_display,
         Span::raw("   |   "),
         Span::styled(
@@ -76,7 +110,10 @@ fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(table_pct), Constraint::Percentage(sidebar_pct)])
+        .constraints([
+            Constraint::Percentage(table_pct),
+            Constraint::Percentage(sidebar_pct),
+        ])
         .split(area);
 
     render_apps_table(f, app, chunks[0]);
@@ -100,7 +137,15 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
         )
     } else {
         (
-            vec!["Scope", "Application / Package", "Version", "Size", "Age / Installed", "Source", "Summary"],
+            vec![
+                "Scope",
+                "Application / Package",
+                "Version",
+                "Size",
+                "Age / Installed",
+                "Source",
+                "Summary",
+            ],
             vec![
                 Constraint::Length(14),
                 Constraint::Length(22),
@@ -113,9 +158,13 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
         )
     };
 
-    let header = Row::new(header_cells.iter().map(|&h| Cell::from(Span::styled(h, theme.header_style()))))
-        .height(1)
-        .bottom_margin(1);
+    let header = Row::new(
+        header_cells
+            .iter()
+            .map(|&h| Cell::from(Span::styled(h, theme.header_style()))),
+    )
+    .height(1)
+    .bottom_margin(1);
 
     let filtered = app.app_mgr.filtered_items();
     let rows: Vec<Row> = filtered
@@ -123,7 +172,12 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
         .map(|item| {
             let (scope_badge, name_style, desc_style) = if item.is_essential {
                 (
-                    Span::styled(" [🔒 SYSTEM] ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        " [🔒 SYSTEM] ",
+                        Style::default()
+                            .fg(theme.warning)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     theme.dim_style(),
                     theme.dim_style(),
                 )
@@ -135,17 +189,30 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
                 )
             } else {
                 (
-                    Span::styled(" [USER APP] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        " [USER APP] ",
+                        Style::default()
+                            .fg(theme.success)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                     Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
                     Style::default().fg(theme.fg),
                 )
             };
 
             let source_style = match item.source.as_str() {
-                "APT" | "Pacman" | "RPM" => Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                "Flatpak" => Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD),
-                "Snap" => Style::default().fg(theme.warning).add_modifier(Modifier::BOLD),
-                _ => Style::default().fg(theme.success).add_modifier(Modifier::BOLD),
+                "APT" | "Pacman" | "RPM" => Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+                "Flatpak" => Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD),
+                "Snap" => Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD),
+                _ => Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD),
             };
 
             let size_display = if item.size_bytes > 0 {
@@ -158,14 +225,20 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
             let age_style = if item.is_initial_install {
                 theme.dim_style()
             } else {
-                Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD)
             };
 
             let cells = if w < 80 {
                 vec![
                     Cell::from(scope_badge),
                     Cell::from(item.name.clone()).style(name_style),
-                    Cell::from(size_display).style(if item.is_essential { theme.dim_style() } else { Style::default().fg(theme.warning) }),
+                    Cell::from(size_display).style(if item.is_essential {
+                        theme.dim_style()
+                    } else {
+                        Style::default().fg(theme.warning)
+                    }),
                     Cell::from(age_display).style(age_style),
                     Cell::from(item.source.clone()).style(source_style),
                 ]
@@ -174,7 +247,11 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
                     Cell::from(scope_badge),
                     Cell::from(item.name.clone()).style(name_style),
                     Cell::from(item.version.clone()).style(theme.dim_style()),
-                    Cell::from(size_display).style(if item.is_essential { theme.dim_style() } else { Style::default().fg(theme.warning) }),
+                    Cell::from(size_display).style(if item.is_essential {
+                        theme.dim_style()
+                    } else {
+                        Style::default().fg(theme.warning)
+                    }),
                     Cell::from(age_display).style(age_style),
                     Cell::from(item.source.clone()).style(source_style),
                     Cell::from(item.description.clone()).style(desc_style),
@@ -190,7 +267,10 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.bg))
-        .title(Span::styled(" 󰏖 Installed Applications & Packages ", theme.title_style()));
+        .title(Span::styled(
+            " 󰏖 Installed Applications & Packages ",
+            theme.title_style(),
+        ));
 
     let table = Table::new(rows, widths)
         .header(header)
@@ -230,7 +310,11 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
     if let Some(item) = selected_app {
         let details_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(if item.is_essential { theme.warning } else { theme.border }))
+            .border_style(Style::default().fg(if item.is_essential {
+                theme.warning
+            } else {
+                theme.border
+            }))
             .title(Span::styled(" Package Info ", theme.title_style()));
 
         let size_str = if item.size_bytes > 0 {
@@ -240,35 +324,60 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
         };
 
         let status_badge = if item.is_essential {
-            Span::styled(" [🔒 Core System — Protected]", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
+            Span::styled(
+                " [🔒 Core System — Protected]",
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD),
+            )
         } else if item.is_initial_install {
-            Span::styled(" [Original OS Pre-installation]", Style::default().fg(theme.secondary))
+            Span::styled(
+                " [Original OS Pre-installation]",
+                Style::default().fg(theme.secondary),
+            )
         } else {
-            Span::styled(" [User Installed Application]", Style::default().fg(theme.success))
+            Span::styled(
+                " [User Installed Application]",
+                Style::default().fg(theme.success),
+            )
         };
 
         let age_str = format_installation_age(item.installed_time, item.is_initial_install);
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Name: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "Name: ",
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(&item.name, Style::default().fg(theme.fg)),
                 Span::raw("  "),
-                Span::styled(format!("({})", item.source), Style::default().fg(theme.secondary)),
+                Span::styled(
+                    format!("({})", item.source),
+                    Style::default().fg(theme.secondary),
+                ),
             ]),
-            Line::from(vec![
-                status_badge,
-            ]),
+            Line::from(vec![status_badge]),
             Line::from(vec![
                 Span::styled("Version: ", Style::default().fg(theme.accent)),
                 Span::styled(&item.version, Style::default().fg(theme.fg)),
                 Span::raw("   "),
                 Span::styled("Size: ", Style::default().fg(theme.accent)),
-                Span::styled(size_str, Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    size_str,
+                    Style::default()
+                        .fg(theme.warning)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Installed: ", Style::default().fg(theme.accent)),
-                Span::styled(age_str, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    age_str,
+                    Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("ID / Path: ", theme.dim_style()),
@@ -279,7 +388,9 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(&item.description, Style::default().fg(theme.fg)),
             ]),
         ];
-        let p = Paragraph::new(text).block(details_block).wrap(Wrap { trim: true });
+        let p = Paragraph::new(text)
+            .block(details_block)
+            .wrap(Wrap { trim: true });
         f.render_widget(p, rows[0]);
     } else {
         let p = Paragraph::new("No application selected").style(theme.dim_style());
@@ -292,26 +403,49 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(theme.border))
         .title(Span::styled(" Management Controls ", theme.title_style()));
 
-    let is_essential = selected_app.map_or(false, |a| a.is_essential);
+    let is_essential = selected_app.is_some_and(|a| a.is_essential);
 
     let uninstall_line = if is_essential {
         Line::from(vec![
             Span::styled(" [u] ", theme.dim_style()),
-            Span::styled("Uninstall: 🚫 Blocked (Protected System Package)", Style::default().fg(theme.danger)),
+            Span::styled(
+                "Uninstall: 🚫 Blocked (Protected System Package)",
+                Style::default().fg(theme.danger),
+            ),
         ])
     } else {
         Line::from(vec![
-            Span::styled(" [u] ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
-            Span::styled("Uninstall / Remove Application", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [u] ",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                "Uninstall / Remove Application",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ])
     };
 
     let actions_text = vec![
         uninstall_line,
         Line::from(vec![
-            Span::styled(" [f] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [f] ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Filter Sources  ", Style::default().fg(theme.fg)),
-            Span::styled(" [s] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [s] ",
+                Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Sort Column", Style::default().fg(theme.fg)),
         ]),
     ];

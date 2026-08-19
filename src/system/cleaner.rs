@@ -23,6 +23,12 @@ pub struct SystemCleaner {
     pub is_busy: bool,
 }
 
+impl Default for SystemCleaner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemCleaner {
     pub fn new() -> Self {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
@@ -33,9 +39,7 @@ impl SystemCleaner {
                 id: "app_cache".to_string(),
                 name: "Application Caches".to_string(),
                 description: "User application temporary cache files (~/.cache)".to_string(),
-                paths: vec![
-                    home_path.join(".cache"),
-                ],
+                paths: vec![home_path.join(".cache")],
                 selected: true,
                 file_count: 0,
                 total_size_bytes: 0,
@@ -46,9 +50,7 @@ impl SystemCleaner {
                 id: "thumbnails".to_string(),
                 name: "Thumbnail Cache".to_string(),
                 description: "Cached image, video and file preview thumbnails".to_string(),
-                paths: vec![
-                    home_path.join(".cache/thumbnails"),
-                ],
+                paths: vec![home_path.join(".cache/thumbnails")],
                 selected: true,
                 file_count: 0,
                 total_size_bytes: 0,
@@ -59,9 +61,7 @@ impl SystemCleaner {
                 id: "trash".to_string(),
                 name: "User Trash Bin".to_string(),
                 description: "Deleted files inside ~/.local/share/Trash".to_string(),
-                paths: vec![
-                    home_path.join(".local/share/Trash"),
-                ],
+                paths: vec![home_path.join(".local/share/Trash")],
                 selected: true,
                 file_count: 0,
                 total_size_bytes: 0,
@@ -71,7 +71,8 @@ impl SystemCleaner {
             CleanCategory {
                 id: "pkg_cache".to_string(),
                 name: "Package Caches".to_string(),
-                description: "APT, Pacman, DNF, Flatpak & Snap downloaded package archives".to_string(),
+                description: "APT, Pacman, DNF, Flatpak & Snap downloaded package archives"
+                    .to_string(),
                 paths: vec![
                     PathBuf::from("/var/cache/apt/archives"),
                     PathBuf::from("/var/cache/pacman/pkg"),
@@ -102,7 +103,8 @@ impl SystemCleaner {
             CleanCategory {
                 id: "system_logs".to_string(),
                 name: "System & App Logs".to_string(),
-                description: "System logs in /var/log and old user application session logs".to_string(),
+                description: "System logs in /var/log and old user application session logs"
+                    .to_string(),
                 paths: vec![
                     PathBuf::from("/var/log"),
                     home_path.join(".local/share/xorg"),
@@ -137,7 +139,11 @@ impl SystemCleaner {
                     continue;
                 }
 
-                for entry in WalkDir::new(path).min_depth(1).into_iter().filter_map(|e| e.ok()) {
+                for entry in WalkDir::new(path)
+                    .min_depth(1)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
                     if entry.file_type().is_file() {
                         if let Ok(meta) = entry.metadata() {
                             cat_bytes += meta.len();
@@ -161,7 +167,10 @@ impl SystemCleaner {
         self.is_busy = false;
     }
 
-    pub fn clean_selected(&mut self, sudo_pass: Option<&str>) -> Result<(usize, u64, Vec<String>), String> {
+    pub fn clean_selected(
+        &mut self,
+        sudo_pass: Option<&str>,
+    ) -> Result<(usize, u64, Vec<String>), String> {
         let mut cleaned_files = 0;
         let mut cleaned_bytes = 0;
         let mut errors = Vec::new();
@@ -190,7 +199,11 @@ impl SystemCleaner {
                         }
                     }
                 } else if path.is_dir() {
-                    for entry in WalkDir::new(path).min_depth(1).into_iter().filter_map(|e| e.ok()) {
+                    for entry in WalkDir::new(path)
+                        .min_depth(1)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
                         if entry.file_type().is_file() {
                             let p = entry.path();
                             if let Ok(meta) = entry.metadata() {
@@ -216,7 +229,8 @@ impl SystemCleaner {
         // Process elevated files in batches of 50
         if let Some(pass) = sudo_pass {
             for chunk in elevated_paths.chunks(50) {
-                let path_strs: Vec<String> = chunk.iter().map(|(p, _)| p.display().to_string()).collect();
+                let path_strs: Vec<String> =
+                    chunk.iter().map(|(p, _)| p.display().to_string()).collect();
                 let args_refs: Vec<&str> = std::iter::once("-f")
                     .chain(path_strs.iter().map(|s| s.as_str()))
                     .collect();

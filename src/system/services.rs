@@ -1,5 +1,5 @@
-use std::process::Command;
 use crate::system::sudo::run_elevated_command;
+use std::process::Command;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ServiceFilterState {
@@ -45,6 +45,12 @@ pub struct ServiceManager {
     pub user_mode: bool,
     pub filter_state: ServiceFilterState,
     pub search_query: String,
+}
+
+impl Default for ServiceManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ServiceManager {
@@ -133,7 +139,9 @@ impl ServiceManager {
                     ServiceFilterState::All => true,
                     ServiceFilterState::Active => s.active_state == "active",
                     ServiceFilterState::Inactive => s.active_state == "inactive",
-                    ServiceFilterState::Failed => s.active_state == "failed" || s.sub_state == "failed",
+                    ServiceFilterState::Failed => {
+                        s.active_state == "failed" || s.sub_state == "failed"
+                    }
                 };
 
                 if !matches_state {
@@ -159,19 +167,36 @@ impl ServiceManager {
         self.run_systemctl_action("stop", unit, sudo_pass)
     }
 
-    pub fn restart_service(&mut self, unit: &str, sudo_pass: Option<&str>) -> Result<String, String> {
+    pub fn restart_service(
+        &mut self,
+        unit: &str,
+        sudo_pass: Option<&str>,
+    ) -> Result<String, String> {
         self.run_systemctl_action("restart", unit, sudo_pass)
     }
 
-    pub fn enable_service(&mut self, unit: &str, sudo_pass: Option<&str>) -> Result<String, String> {
+    pub fn enable_service(
+        &mut self,
+        unit: &str,
+        sudo_pass: Option<&str>,
+    ) -> Result<String, String> {
         self.run_systemctl_action("enable", unit, sudo_pass)
     }
 
-    pub fn disable_service(&mut self, unit: &str, sudo_pass: Option<&str>) -> Result<String, String> {
+    pub fn disable_service(
+        &mut self,
+        unit: &str,
+        sudo_pass: Option<&str>,
+    ) -> Result<String, String> {
         self.run_systemctl_action("disable", unit, sudo_pass)
     }
 
-    fn run_systemctl_action(&mut self, action: &str, unit: &str, sudo_pass: Option<&str>) -> Result<String, String> {
+    fn run_systemctl_action(
+        &mut self,
+        action: &str,
+        unit: &str,
+        sudo_pass: Option<&str>,
+    ) -> Result<String, String> {
         if self.user_mode {
             let mut cmd = Command::new("systemctl");
             cmd.arg("--user").arg(action).arg(unit);
@@ -179,11 +204,19 @@ impl ServiceManager {
                 Ok(out) => {
                     if out.status.success() {
                         self.refresh();
-                        Ok(format!("Successfully performed '{}' on user service {}", action, unit))
+                        Ok(format!(
+                            "Successfully performed '{}' on user service {}",
+                            action, unit
+                        ))
                     } else {
                         let err = String::from_utf8_lossy(&out.stderr);
                         Err(if err.trim().is_empty() {
-                            format!("Failed to {} {} (exit code: {:?})", action, unit, out.status.code())
+                            format!(
+                                "Failed to {} {} (exit code: {:?})",
+                                action,
+                                unit,
+                                out.status.code()
+                            )
                         } else {
                             err.trim().to_string()
                         })
@@ -197,7 +230,10 @@ impl ServiceManager {
             match res {
                 Ok(_) => {
                     self.refresh();
-                    Ok(format!("Successfully performed '{}' on system service {}", action, unit))
+                    Ok(format!(
+                        "Successfully performed '{}' on system service {}",
+                        action, unit
+                    ))
                 }
                 Err(e) => Err(e),
             }

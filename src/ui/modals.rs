@@ -11,11 +11,20 @@ use crate::app::{App, ConfirmAction, InputMode};
 pub fn render_modals(f: &mut Frame, app: &App) {
     match &app.input_mode {
         InputMode::ConfirmModal(action) => render_confirm_modal(f, app, action),
-        InputMode::SudoPasswordModal { pending_action, password, error_msg } => {
+        InputMode::SudoPasswordModal {
+            pending_action,
+            password,
+            error_msg,
+        } => {
             render_sudo_password_modal(f, app, pending_action, password, error_msg.as_deref());
         }
         InputMode::HelpModal => render_help_modal(f, app),
-        InputMode::NewAutostartModal { name, exec, comment, active_field } => {
+        InputMode::NewAutostartModal {
+            name,
+            exec,
+            comment,
+            active_field,
+        } => {
             render_new_autostart_modal(f, app, name, exec, comment, *active_field);
         }
         InputMode::Search => render_search_modal(f, app),
@@ -27,9 +36,15 @@ pub fn render_toast(f: &mut Frame, app: &App, area: Rect) {
     if let Some(toast) = &app.toast {
         let theme = &app.theme;
         let toast_style = if toast.is_error {
-            Style::default().fg(theme.fg).bg(theme.danger).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme.fg)
+                .bg(theme.danger)
+                .add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(theme.bg).bg(theme.success).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme.bg)
+                .bg(theme.success)
+                .add_modifier(Modifier::BOLD)
         };
 
         let msg = format!("  {}  ", toast.message);
@@ -47,7 +62,9 @@ pub fn render_toast(f: &mut Frame, app: &App, area: Rect) {
             .border_style(toast_style)
             .style(toast_style);
 
-        let p = Paragraph::new(msg).block(block).alignment(Alignment::Center);
+        let p = Paragraph::new(msg)
+            .block(block)
+            .alignment(Alignment::Center);
         f.render_widget(Clear, toast_area);
         f.render_widget(p, toast_area);
     }
@@ -141,7 +158,12 @@ fn render_confirm_modal(f: &mut Frame, app: &App, action: &ConfirmAction) {
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(theme.danger))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(title, Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(
+            title,
+            Style::default()
+                .fg(theme.danger)
+                .add_modifier(Modifier::BOLD),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -151,14 +173,26 @@ fn render_confirm_modal(f: &mut Frame, app: &App, action: &ConfirmAction) {
         .constraints([Constraint::Min(4), Constraint::Length(3)])
         .split(inner);
 
-    let p_msg = Paragraph::new(message).style(Style::default().fg(theme.fg)).wrap(Wrap { trim: true });
+    let p_msg = Paragraph::new(message)
+        .style(Style::default().fg(theme.fg))
+        .wrap(Wrap { trim: true });
     f.render_widget(p_msg, chunks[0]);
 
     let controls = Paragraph::new(Line::from(vec![
-        Span::styled(" [Y] / [Enter] Confirm ", Style::default().fg(theme.bg).bg(theme.danger).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " [Y] / [Enter] Confirm ",
+            Style::default()
+                .fg(theme.bg)
+                .bg(theme.danger)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("     "),
-        Span::styled(" [N] / [Esc] Cancel ", Style::default().fg(theme.fg).bg(theme.border)),
-    ])).alignment(Alignment::Center);
+        Span::styled(
+            " [N] / [Esc] Cancel ",
+            Style::default().fg(theme.fg).bg(theme.border),
+        ),
+    ]))
+    .alignment(Alignment::Center);
     f.render_widget(controls, chunks[1]);
 }
 
@@ -178,7 +212,12 @@ fn render_sudo_password_modal(
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(theme.warning))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 🔒 Sudo / Root Authentication Required ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(
+            " 🔒 Sudo / Root Authentication Required ",
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -194,15 +233,33 @@ fn render_sudo_password_modal(
         .split(inner);
 
     let action_desc = match action {
-        ConfirmAction::CleanCategories(cats, _) => format!("Elevated privileges needed to purge system caches ({})", cats.join(", ")),
-        ConfirmAction::ServiceAction(act, unit) => format!("Elevated privileges needed to {} systemd service '{}'", act, unit),
-        ConfirmAction::UninstallApp(app) => format!("Elevated privileges needed to uninstall system package '{}'", app.name),
-        ConfirmAction::KillProcess(pid, name) => format!("Elevated privileges needed to kill PID {} ({})", pid, name),
-        ConfirmAction::KillPort { port, proc_name, .. } => format!("Elevated privileges needed to terminate Port {} bound to '{}'", port, proc_name),
+        ConfirmAction::CleanCategories(cats, _) => format!(
+            "Elevated privileges needed to purge system caches ({})",
+            cats.join(", ")
+        ),
+        ConfirmAction::ServiceAction(act, unit) => format!(
+            "Elevated privileges needed to {} systemd service '{}'",
+            act, unit
+        ),
+        ConfirmAction::UninstallApp(app) => format!(
+            "Elevated privileges needed to uninstall system package '{}'",
+            app.name
+        ),
+        ConfirmAction::KillProcess(pid, name) => {
+            format!("Elevated privileges needed to kill PID {} ({})", pid, name)
+        }
+        ConfirmAction::KillPort {
+            port, proc_name, ..
+        } => format!(
+            "Elevated privileges needed to terminate Port {} bound to '{}'",
+            port, proc_name
+        ),
         _ => "Administrative superuser privileges required".to_string(),
     };
 
-    let p_desc = Paragraph::new(action_desc).style(Style::default().fg(theme.fg)).wrap(Wrap { trim: true });
+    let p_desc = Paragraph::new(action_desc)
+        .style(Style::default().fg(theme.fg))
+        .wrap(Wrap { trim: true });
     f.render_widget(p_desc, chunks[0]);
 
     // Password input field (masked with bullet points)
@@ -213,7 +270,10 @@ fn render_sudo_password_modal(
         .title(Span::styled(" Sudo Password ", theme.title_style()));
 
     let pw_line = Line::from(vec![
-        Span::styled(masked_pw, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            masked_pw,
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        ),
         Span::styled("█", Style::default().fg(theme.accent)),
     ]);
     let p_pw = Paragraph::new(pw_line).block(pw_block);
@@ -221,18 +281,36 @@ fn render_sudo_password_modal(
 
     // Error message display
     if let Some(err) = error_msg {
-        let p_err = Paragraph::new(Span::styled(format!("❌ {}", err), Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)));
+        let p_err = Paragraph::new(Span::styled(
+            format!("❌ {}", err),
+            Style::default()
+                .fg(theme.danger)
+                .add_modifier(Modifier::BOLD),
+        ));
         f.render_widget(p_err, chunks[2]);
     } else {
-        let p_hint = Paragraph::new(Span::styled("Enter your Linux sudo user password.", theme.dim_style()));
+        let p_hint = Paragraph::new(Span::styled(
+            "Enter your Linux sudo user password.",
+            theme.dim_style(),
+        ));
         f.render_widget(p_hint, chunks[2]);
     }
 
     let controls = Paragraph::new(Line::from(vec![
-        Span::styled(" [Enter] Authenticate & Run ", Style::default().fg(theme.bg).bg(theme.success).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " [Enter] Authenticate & Run ",
+            Style::default()
+                .fg(theme.bg)
+                .bg(theme.success)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("     "),
-        Span::styled(" [Esc] Cancel ", Style::default().fg(theme.fg).bg(theme.border)),
-    ])).alignment(Alignment::Center);
+        Span::styled(
+            " [Esc] Cancel ",
+            Style::default().fg(theme.fg).bg(theme.border),
+        ),
+    ]))
+    .alignment(Alignment::Center);
     f.render_widget(controls, chunks[3]);
 }
 
@@ -246,7 +324,10 @@ fn render_search_modal(f: &mut Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.accent))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled("  Live Search / Filter ", theme.title_style()));
+        .title(Span::styled(
+            "  Live Search / Filter ",
+            theme.title_style(),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -257,8 +338,16 @@ fn render_search_modal(f: &mut Frame, app: &App) {
         .split(inner);
 
     let input_display = Line::from(vec![
-        Span::styled(" Query: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-        Span::styled(&app.search_input, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " Query: ",
+            Style::default()
+                .fg(theme.secondary)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            &app.search_input,
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        ),
         Span::styled("█", Style::default().fg(theme.accent)),
     ]);
     let p_input = Paragraph::new(input_display);
@@ -268,7 +357,8 @@ fn render_search_modal(f: &mut Frame, app: &App) {
         Span::styled(" [Enter] Apply Search ", Style::default().fg(theme.success)),
         Span::raw("   "),
         Span::styled(" [Esc] Cancel ", theme.dim_style()),
-    ])).alignment(Alignment::Right);
+    ]))
+    .alignment(Alignment::Right);
     f.render_widget(hints, rows[1]);
 }
 
@@ -282,39 +372,126 @@ fn render_help_modal(f: &mut Frame, app: &App) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.accent))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled("  stasis Shortcuts & Reference Guide ", theme.title_style()));
+        .title(Span::styled(
+            "  stasis Shortcuts & Reference Guide ",
+            theme.title_style(),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
 
     let shortcuts = [
         ("Global", "1-6 / F1-F6", "Switch active tabs directly"),
-        ("Global", "Tab / Shift+Tab", "Cycle through tabs forwards / backwards"),
-        ("Global", "t", "Cycle color themes (Cyberpunk, Dracula, Nord, Monokai, Gruvbox)"),
+        (
+            "Global",
+            "Tab / Shift+Tab",
+            "Cycle through tabs forwards / backwards",
+        ),
+        (
+            "Global",
+            "t",
+            "Cycle color themes (Cyberpunk, Dracula, Nord, Monokai, Gruvbox)",
+        ),
         ("Global", "r", "Force immediate telemetry refresh"),
         ("Global", "?", "Open / Close this Help & Keybindings modal"),
         ("Global", "q / Ctrl+C", "Quit stasis cleanly"),
-        ("Processes", "↑/↓ or j/k", "Navigate process list (PageUp/PageDown for fast scroll)"),
-        ("Processes", "s / d", "Cycle sort column (s) / Toggle sort direction (d)"),
-        ("Processes", "/", "Open live process substring search filter"),
+        (
+            "Processes",
+            "↑/↓ or j/k",
+            "Navigate process list (PageUp/PageDown for fast scroll)",
+        ),
+        (
+            "Processes",
+            "s / d",
+            "Cycle sort column (s) / Toggle sort direction (d)",
+        ),
+        (
+            "Processes",
+            "/",
+            "Open live process substring search filter",
+        ),
         ("Processes", "K / x / Del", "Kill process (SIGKILL)"),
         ("Processes", "t", "Terminate process (SIGTERM)"),
-        ("Processes", "p / c", "Pause process (SIGSTOP) / Continue process (SIGCONT)"),
-        ("Cleaner", "Space", "Toggle selection checkbox for active cleaner category"),
-        ("Cleaner", "a", "Select All / Deselect All cleaner categories"),
-        ("Cleaner", "s", "Scan system files to calculate reclaimable space"),
-        ("Cleaner", "c / Enter", "Clean selected cache categories (prompts sudo if needed)"),
-        ("Services", "u", "Toggle systemctl scope: System (root) ⇄ User (--user)"),
-        ("Services", "f", "Cycle service state filter: All → Active → Inactive → Failed"),
-        ("Services", "s / x / r", "Start (s) / Stop (x) / Restart (r) selected service unit"),
-        ("Services", "e / d", "Enable at boot (e) / Disable from boot (d) selected service"),
-        ("Autostart", "Space / Enter", "Toggle application autostart status (Enabled ⇄ Disabled)"),
-        ("Autostart", "n", "Add new autostart application (.desktop generator)"),
-        ("Autostart", "d / Delete", "Delete selected autostart configuration entry"),
-        ("Applications", "↑/↓ or j/k", "Navigate installed applications and packages"),
-        ("Applications", "f / s / d", "Filter sources (f) / Sort by size/name (s) / Invert sort (d)"),
-        ("Applications", "u / Del", "Uninstall selected application (prompts sudo if needed)"),
-        ("Applications", "/", "Live search packages by name or description"),
+        (
+            "Processes",
+            "p / c",
+            "Pause process (SIGSTOP) / Continue process (SIGCONT)",
+        ),
+        (
+            "Cleaner",
+            "Space",
+            "Toggle selection checkbox for active cleaner category",
+        ),
+        (
+            "Cleaner",
+            "a",
+            "Select All / Deselect All cleaner categories",
+        ),
+        (
+            "Cleaner",
+            "s",
+            "Scan system files to calculate reclaimable space",
+        ),
+        (
+            "Cleaner",
+            "c / Enter",
+            "Clean selected cache categories (prompts sudo if needed)",
+        ),
+        (
+            "Services",
+            "u",
+            "Toggle systemctl scope: System (root) ⇄ User (--user)",
+        ),
+        (
+            "Services",
+            "f",
+            "Cycle service state filter: All → Active → Inactive → Failed",
+        ),
+        (
+            "Services",
+            "s / x / r",
+            "Start (s) / Stop (x) / Restart (r) selected service unit",
+        ),
+        (
+            "Services",
+            "e / d",
+            "Enable at boot (e) / Disable from boot (d) selected service",
+        ),
+        (
+            "Autostart",
+            "Space / Enter",
+            "Toggle application autostart status (Enabled ⇄ Disabled)",
+        ),
+        (
+            "Autostart",
+            "n",
+            "Add new autostart application (.desktop generator)",
+        ),
+        (
+            "Autostart",
+            "d / Delete",
+            "Delete selected autostart configuration entry",
+        ),
+        (
+            "Applications",
+            "↑/↓ or j/k",
+            "Navigate installed applications and packages",
+        ),
+        (
+            "Applications",
+            "f / s / d",
+            "Filter sources (f) / Sort by size/name (s) / Invert sort (d)",
+        ),
+        (
+            "Applications",
+            "u / Del",
+            "Uninstall selected application (prompts sudo if needed)",
+        ),
+        (
+            "Applications",
+            "/",
+            "Live search packages by name or description",
+        ),
     ];
 
     let header_cells = ["Category", "Key", "Action / Function"]
@@ -326,8 +503,16 @@ fn render_help_modal(f: &mut Frame, app: &App) {
         .iter()
         .map(|(cat, key, desc)| {
             let cells = vec![
-                Cell::from(*cat).style(Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-                Cell::from(*key).style(Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                Cell::from(*cat).style(
+                    Style::default()
+                        .fg(theme.secondary)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Cell::from(*key).style(
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Cell::from(*desc).style(Style::default().fg(theme.fg)),
             ];
             Row::new(cells).height(1)
@@ -361,7 +546,10 @@ fn render_new_autostart_modal(
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.accent))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󱑞 Add New Startup Application ", theme.title_style()));
+        .title(Span::styled(
+            " 󱑞 Add New Startup Application ",
+            theme.title_style(),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -379,54 +567,115 @@ fn render_new_autostart_modal(
     // Render Field 0: Name
     let b0 = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(if active_field == 0 { theme.accent } else { theme.border }))
-        .title(Span::styled(" Application Name (e.g. Discord) ", if active_field == 0 { theme.title_style() } else { theme.dim_style() }));
+        .border_style(Style::default().fg(if active_field == 0 {
+            theme.accent
+        } else {
+            theme.border
+        }))
+        .title(Span::styled(
+            " Application Name (e.g. Discord) ",
+            if active_field == 0 {
+                theme.title_style()
+            } else {
+                theme.dim_style()
+            },
+        ));
     let t0 = if active_field == 0 {
         Line::from(vec![
-            Span::styled(name.to_string(), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                name.to_string(),
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("█", Style::default().fg(theme.accent)),
         ])
     } else {
-        Line::from(Span::styled(if name.is_empty() { "(empty)" } else { name }, theme.dim_style()))
+        Line::from(Span::styled(
+            if name.is_empty() { "(empty)" } else { name },
+            theme.dim_style(),
+        ))
     };
     f.render_widget(Paragraph::new(t0).block(b0), chunks[0]);
 
     // Render Field 1: Exec
     let b1 = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(if active_field == 1 { theme.accent } else { theme.border }))
-        .title(Span::styled(" Executable Command (e.g. /usr/bin/discord) ", if active_field == 1 { theme.title_style() } else { theme.dim_style() }));
+        .border_style(Style::default().fg(if active_field == 1 {
+            theme.accent
+        } else {
+            theme.border
+        }))
+        .title(Span::styled(
+            " Executable Command (e.g. /usr/bin/discord) ",
+            if active_field == 1 {
+                theme.title_style()
+            } else {
+                theme.dim_style()
+            },
+        ));
     let t1 = if active_field == 1 {
         Line::from(vec![
-            Span::styled(exec.to_string(), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                exec.to_string(),
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("█", Style::default().fg(theme.accent)),
         ])
     } else {
-        Line::from(Span::styled(if exec.is_empty() { "(empty)" } else { exec }, theme.dim_style()))
+        Line::from(Span::styled(
+            if exec.is_empty() { "(empty)" } else { exec },
+            theme.dim_style(),
+        ))
     };
     f.render_widget(Paragraph::new(t1).block(b1), chunks[1]);
 
     // Render Field 2: Comment
     let b2 = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(if active_field == 2 { theme.accent } else { theme.border }))
-        .title(Span::styled(" Comment / Description (Optional) ", if active_field == 2 { theme.title_style() } else { theme.dim_style() }));
+        .border_style(Style::default().fg(if active_field == 2 {
+            theme.accent
+        } else {
+            theme.border
+        }))
+        .title(Span::styled(
+            " Comment / Description (Optional) ",
+            if active_field == 2 {
+                theme.title_style()
+            } else {
+                theme.dim_style()
+            },
+        ));
     let t2 = if active_field == 2 {
         Line::from(vec![
-            Span::styled(comment.to_string(), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                comment.to_string(),
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("█", Style::default().fg(theme.accent)),
         ])
     } else {
-        Line::from(Span::styled(if comment.is_empty() { "(empty)" } else { comment }, theme.dim_style()))
+        Line::from(Span::styled(
+            if comment.is_empty() {
+                "(empty)"
+            } else {
+                comment
+            },
+            theme.dim_style(),
+        ))
     };
     f.render_widget(Paragraph::new(t2).block(b2), chunks[2]);
 
     let controls = Paragraph::new(Line::from(vec![
         Span::styled(" [Tab] Next Field ", Style::default().fg(theme.accent)),
         Span::raw("   "),
-        Span::styled(" [Enter] Create Entry ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " [Enter] Create Entry ",
+            Style::default()
+                .fg(theme.success)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   "),
         Span::styled(" [Esc] Cancel ", theme.dim_style()),
-    ])).alignment(Alignment::Center);
+    ]))
+    .alignment(Alignment::Center);
     f.render_widget(controls, chunks[3]);
 }

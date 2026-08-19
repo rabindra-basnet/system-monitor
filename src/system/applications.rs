@@ -192,6 +192,12 @@ pub fn is_system_essential_package(name: &str) -> bool {
         || lower.starts_with("openssh-server")
 }
 
+impl Default for ApplicationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApplicationManager {
     pub fn new() -> Self {
         let mut mgr = Self {
@@ -227,7 +233,10 @@ impl ApplicationManager {
                                 let base = clean.split(':').next().unwrap_or(clean);
                                 dpkg_mtimes.insert(base.to_string(), secs);
 
-                                if base == "ubuntu-minimal" || base == "base-files" || base == "ubuntu-standard" {
+                                if base == "ubuntu-minimal"
+                                    || base == "base-files"
+                                    || base == "ubuntu-standard"
+                                {
                                     initial_os_ts = match initial_os_ts {
                                         Some(old) => Some(old.min(secs)),
                                         None => Some(secs),
@@ -360,8 +369,16 @@ impl ApplicationManager {
                     if parts.len() >= 2 {
                         let name = parts[0].trim().to_string();
                         let app_id = parts[1].trim().to_string();
-                        let version = if parts.len() > 2 { parts[2].trim().to_string() } else { "latest".to_string() };
-                        let size_bytes = if parts.len() > 3 { Self::parse_size_string(parts[3].trim()) } else { 0 };
+                        let version = if parts.len() > 2 {
+                            parts[2].trim().to_string()
+                        } else {
+                            "latest".to_string()
+                        };
+                        let size_bytes = if parts.len() > 3 {
+                            Self::parse_size_string(parts[3].trim())
+                        } else {
+                            0
+                        };
 
                         let is_essential = is_system_essential_package(&name);
                         all_apps.push(ApplicationItem {
@@ -389,7 +406,10 @@ impl ApplicationManager {
                     if fields.len() >= 3 {
                         let name = fields[0].to_string();
                         let version = fields[1].to_string();
-                        let is_essential = is_system_essential_package(&name) || name == "core" || name == "snapd" || name.starts_with("core2");
+                        let is_essential = is_system_essential_package(&name)
+                            || name == "core"
+                            || name == "snapd"
+                            || name.starts_with("core2");
 
                         all_apps.push(ApplicationItem {
                             name: name.clone(),
@@ -418,7 +438,7 @@ impl ApplicationManager {
             if let Ok(entries) = fs::read_dir(dir_opt) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().map_or(false, |ext| ext == "desktop") {
+                    if path.extension().is_some_and(|ext| ext == "desktop") {
                         if let Ok(content) = fs::read_to_string(&path) {
                             let mut name = String::new();
                             let mut exec = String::new();
@@ -444,7 +464,12 @@ impl ApplicationManager {
                                 }
                             }
 
-                            if is_nodisplay || name.is_empty() || name.to_lowercase() == "stasis" || name.to_lowercase() == "sysmon-tui" || name.to_lowercase() == "vim" {
+                            if is_nodisplay
+                                || name.is_empty()
+                                || name.to_lowercase() == "stasis"
+                                || name.to_lowercase() == "sysmon-tui"
+                                || name.to_lowercase() == "vim"
+                            {
                                 continue;
                             }
 
@@ -457,9 +482,13 @@ impl ApplicationManager {
                             if !exists {
                                 let mut size_bytes = 0u64;
                                 let exec_cmd = exec.split_whitespace().next().unwrap_or("");
-                                if let Ok(which_out) = Command::new("which").arg(exec_cmd).output() {
+                                if let Ok(which_out) = Command::new("which").arg(exec_cmd).output()
+                                {
                                     if which_out.status.success() {
-                                        let bin_path_str = String::from_utf8_lossy(&which_out.stdout).trim().to_string();
+                                        let bin_path_str =
+                                            String::from_utf8_lossy(&which_out.stdout)
+                                                .trim()
+                                                .to_string();
                                         if let Ok(meta) = fs::metadata(&bin_path_str) {
                                             size_bytes = meta.len();
                                         }
@@ -475,12 +504,16 @@ impl ApplicationManager {
                                 let mut installed_time = None;
                                 if let Ok(meta) = fs::metadata(&path) {
                                     if let Ok(mod_time) = meta.modified() {
-                                        if let Ok(dur) = mod_time.duration_since(SystemTime::UNIX_EPOCH) {
+                                        if let Ok(dur) =
+                                            mod_time.duration_since(SystemTime::UNIX_EPOCH)
+                                        {
                                             installed_time = Some(dur.as_secs());
                                         }
                                     }
                                 }
-                                let is_initial_install = if let (Some(mtime), Some(init_ts)) = (installed_time, initial_os_ts) {
+                                let is_initial_install = if let (Some(mtime), Some(init_ts)) =
+                                    (installed_time, initial_os_ts)
+                                {
                                     (mtime as i64 - init_ts as i64).abs() < 86400 * 2
                                 } else {
                                     false
@@ -490,7 +523,11 @@ impl ApplicationManager {
                                     name: name.clone(),
                                     version,
                                     size_bytes,
-                                    description: if comment.is_empty() { format!("Desktop application: {}", name) } else { comment },
+                                    description: if comment.is_empty() {
+                                        format!("Desktop application: {}", name)
+                                    } else {
+                                        comment
+                                    },
                                     source: "Desktop".to_string(),
                                     package_id: path.display().to_string(),
                                     is_essential,
@@ -504,7 +541,8 @@ impl ApplicationManager {
             }
         }
 
-        all_apps.retain(|a| a.name.to_lowercase() != "stasis" && a.name.to_lowercase() != "sysmon-tui");
+        all_apps
+            .retain(|a| a.name.to_lowercase() != "stasis" && a.name.to_lowercase() != "sysmon-tui");
         self.items = all_apps;
         self.apply_sorting();
         self.is_loading = false;
@@ -520,7 +558,11 @@ impl ApplicationManager {
             return 0;
         }
         let num: f64 = parts[0].parse().unwrap_or(0.0);
-        let unit = if parts.len() > 1 { parts[1].to_uppercase() } else { "B".to_string() };
+        let unit = if parts.len() > 1 {
+            parts[1].to_uppercase()
+        } else {
+            "B".to_string()
+        };
 
         if unit.starts_with("K") || unit.starts_with("KIB") {
             (num * 1024.0) as u64
@@ -596,15 +638,13 @@ impl ApplicationManager {
         let q = self.search_query.to_lowercase();
         self.items
             .iter()
-            .filter(|app| {
-                match self.source_filter {
-                    AppSourceFilter::All => true,
-                    AppSourceFilter::UserInstalled => !app.is_initial_install && !app.is_essential,
-                    AppSourceFilter::InitialOS => app.is_initial_install,
-                    AppSourceFilter::DesktopOnly => app.source == "Desktop",
-                    AppSourceFilter::Flatpak => app.source == "Flatpak",
-                    AppSourceFilter::Snap => app.source == "Snap",
-                }
+            .filter(|app| match self.source_filter {
+                AppSourceFilter::All => true,
+                AppSourceFilter::UserInstalled => !app.is_initial_install && !app.is_essential,
+                AppSourceFilter::InitialOS => app.is_initial_install,
+                AppSourceFilter::DesktopOnly => app.source == "Desktop",
+                AppSourceFilter::Flatpak => app.source == "Flatpak",
+                AppSourceFilter::Snap => app.source == "Snap",
             })
             .filter(|app| {
                 if !q.is_empty() {
@@ -618,9 +658,16 @@ impl ApplicationManager {
             .collect()
     }
 
-    pub fn uninstall_app(&mut self, app: &ApplicationItem, sudo_pass: Option<&str>) -> Result<String, String> {
+    pub fn uninstall_app(
+        &mut self,
+        app: &ApplicationItem,
+        sudo_pass: Option<&str>,
+    ) -> Result<String, String> {
         if app.is_essential {
-            return Err(format!("Cannot uninstall '{}': Protected system package essential for Linux operation", app.name));
+            return Err(format!(
+                "Cannot uninstall '{}': Protected system package essential for Linux operation",
+                app.name
+            ));
         }
 
         let (cmd_name, args, needs_sudo): (&str, Vec<&str>, bool) = match app.source.as_str() {
@@ -631,11 +678,17 @@ impl ApplicationManager {
             "Desktop" => {
                 let path = Path::new(&app.package_id);
                 if path.exists() {
-                    let is_sys = app.package_id.starts_with("/usr/share") || app.package_id.starts_with("/usr/local");
+                    let is_sys = app.package_id.starts_with("/usr/share")
+                        || app.package_id.starts_with("/usr/local");
                     if is_sys {
-                        crate::system::sudo::run_elevated_command("rm", &["-f", &app.package_id], sudo_pass)?;
+                        crate::system::sudo::run_elevated_command(
+                            "rm",
+                            &["-f", &app.package_id],
+                            sudo_pass,
+                        )?;
                     } else {
-                        fs::remove_file(path).map_err(|e| format!("Failed to delete desktop file: {}", e))?;
+                        fs::remove_file(path)
+                            .map_err(|e| format!("Failed to delete desktop file: {}", e))?;
                     }
                     self.refresh();
                     return Ok(format!("Removed desktop entry for '{}'", app.name));
@@ -660,7 +713,10 @@ impl ApplicationManager {
             } else {
                 let err = String::from_utf8_lossy(&output.stderr);
                 Err(if err.trim().is_empty() {
-                    format!("Uninstallation exited with code: {:?}", output.status.code())
+                    format!(
+                        "Uninstallation exited with code: {:?}",
+                        output.status.code()
+                    )
                 } else {
                     err.trim().to_string()
                 })

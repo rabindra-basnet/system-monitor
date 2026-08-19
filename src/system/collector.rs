@@ -49,6 +49,12 @@ pub struct SystemCollector {
     pub load_avg_fifteen: f64,
 }
 
+impl Default for SystemCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemCollector {
     pub fn new() -> Self {
         let mut sys = System::new_with_specifics(
@@ -157,7 +163,9 @@ impl SystemCollector {
         let total_mem = self.sys.total_memory();
         let used_mem = self.sys.used_memory();
         let mem_pct = if total_mem > 0 {
-            ((used_mem as f64 / total_mem as f64) * 100.0).round().clamp(0.0, 100.0) as u64
+            ((used_mem as f64 / total_mem as f64) * 100.0)
+                .round()
+                .clamp(0.0, 100.0) as u64
         } else {
             0
         };
@@ -168,7 +176,9 @@ impl SystemCollector {
         let total_swap = self.sys.total_swap();
         let used_swap = self.sys.used_swap();
         let swap_pct = if total_swap > 0 {
-            ((used_swap as f64 / total_swap as f64) * 100.0).round().clamp(0.0, 100.0) as u64
+            ((used_swap as f64 / total_swap as f64) * 100.0)
+                .round()
+                .clamp(0.0, 100.0) as u64
         } else {
             0
         };

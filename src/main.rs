@@ -11,8 +11,8 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind,
-        KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers,
+        MouseButton, MouseEvent, MouseEventKind,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -32,7 +32,8 @@ fn setup_panic_hook() {
 }
 
 fn print_help() {
-    println!(r#"
+    println!(
+        r#"
 stasis 0.1.0 — Stacer-Inspired Lightweight Linux System Monitor & Optimizer
 
 USAGE:
@@ -51,7 +52,8 @@ KEYBOARD SHORTCUTS:
     ?                            Open in-app Help and shortcuts modal
     q, Ctrl+C                    Quit application cleanly
     /                            Live search & filter (Processes, Services, Autostart, Apps)
-"#);
+"#
+    );
 }
 
 fn run_diagnostics() -> Result<()> {
@@ -67,8 +69,14 @@ fn run_diagnostics() -> Result<()> {
     println!("  OS:             {}", app.collector.os_name);
     println!("  Kernel:         {}", app.collector.kernel_version);
     println!("  Uptime:         {}", app.collector.uptime_formatted());
-    println!("  CPU:            {} ({} Cores)", app.collector.cpu_model, app.collector.cpu_count);
-    println!("  Global CPU Load: {}%", app.collector.sys.global_cpu_usage().round() as u64);
+    println!(
+        "  CPU:            {} ({} Cores)",
+        app.collector.cpu_model, app.collector.cpu_count
+    );
+    println!(
+        "  Global CPU Load: {}%",
+        app.collector.sys.global_cpu_usage().round() as u64
+    );
     println!(
         "  Load Averages:  {:.2}, {:.2}, {:.2}",
         app.collector.load_avg_one, app.collector.load_avg_five, app.collector.load_avg_fifteen
@@ -84,13 +92,21 @@ fn run_diagnostics() -> Result<()> {
         "  RAM Usage:      {} / {} ({:.1}%)",
         format_bytes(used_mem),
         format_bytes(total_mem),
-        if total_mem > 0 { (used_mem as f64 / total_mem as f64) * 100.0 } else { 0.0 }
+        if total_mem > 0 {
+            (used_mem as f64 / total_mem as f64) * 100.0
+        } else {
+            0.0
+        }
     );
     println!(
         "  Swap Usage:     {} / {} ({:.1}%)",
         format_bytes(used_swap),
         format_bytes(total_swap),
-        if total_swap > 0 { (used_swap as f64 / total_swap as f64) * 100.0 } else { 0.0 }
+        if total_swap > 0 {
+            (used_swap as f64 / total_swap as f64) * 100.0
+        } else {
+            0.0
+        }
     );
 
     // 3. Disks
@@ -122,7 +138,13 @@ fn run_diagnostics() -> Result<()> {
     println!("  Total Processes: {}", app.process_list.len());
     println!("  Top 3 CPU Processes:");
     for p in app.process_list.iter().take(3) {
-        println!("    - PID {}: {} ({:.1}% CPU, {})", p.pid, p.name, p.cpu_usage, format_bytes(p.memory_bytes));
+        println!(
+            "    - PID {}: {} ({:.1}% CPU, {})",
+            p.pid,
+            p.name,
+            p.cpu_usage,
+            format_bytes(p.memory_bytes)
+        );
     }
 
     // 6. System Cleaner Scan
@@ -144,8 +166,18 @@ fn run_diagnostics() -> Result<()> {
 
     // 7. Services
     println!("\n\x1b[1;32m[+] systemd Services\x1b[0m");
-    let active_count = app.service_mgr.services.iter().filter(|s| s.active_state == "active").count();
-    let failed_count = app.service_mgr.services.iter().filter(|s| s.active_state == "failed").count();
+    let active_count = app
+        .service_mgr
+        .services
+        .iter()
+        .filter(|s| s.active_state == "active")
+        .count();
+    let failed_count = app
+        .service_mgr
+        .services
+        .iter()
+        .filter(|s| s.active_state == "failed")
+        .count();
     println!(
         "  Loaded Services: {} total ({} active, {} failed)",
         app.service_mgr.services.len(),
@@ -165,7 +197,10 @@ fn run_diagnostics() -> Result<()> {
 
     // 9. Installed Packages & Applications
     println!("\n\x1b[1;32m[+] Installed Applications & Packages\x1b[0m");
-    println!("  Detected Packages / Applications: {}", app.app_mgr.items.len());
+    println!(
+        "  Detected Packages / Applications: {}",
+        app.app_mgr.items.len()
+    );
     for item in app.app_mgr.items.iter().take(3) {
         println!("    - {} ({}) - {}", item.name, item.source, item.version);
     }
@@ -192,10 +227,14 @@ fn spawn_desktop_window(forward_args: &[String]) -> Result<()> {
     // 2. Fallback to alacritty
     if std::process::Command::new("alacritty")
         .args([
-            "--class", "stasis,stasis",
-            "--title", "Stasis — System Optimizer",
-            "-o", "window.dimensions.columns=134",
-            "-o", "window.dimensions.lines=38",
+            "--class",
+            "stasis,stasis",
+            "--title",
+            "Stasis — System Optimizer",
+            "-o",
+            "window.dimensions.columns=134",
+            "-o",
+            "window.dimensions.lines=38",
             "-e",
         ])
         .arg(&current_exe)
@@ -213,8 +252,10 @@ fn spawn_desktop_window(forward_args: &[String]) -> Result<()> {
             "--class=stasis",
             "--app-id=stasis",
             "--title=Stasis — System Optimizer",
-            "-o", "initial_window_width=134c",
-            "-o", "initial_window_height=38c",
+            "-o",
+            "initial_window_width=134c",
+            "-o",
+            "initial_window_height=38c",
         ])
         .arg(&current_exe)
         .arg("-i")
@@ -247,8 +288,10 @@ fn spawn_desktop_window(forward_args: &[String]) -> Result<()> {
     // 5. Fallback to xterm
     if std::process::Command::new("xterm")
         .args([
-            "-title", "Stasis — System Optimizer",
-            "-geometry", "134x38",
+            "-title",
+            "Stasis — System Optimizer",
+            "-geometry",
+            "134x38",
             "-e",
         ])
         .arg(&current_exe)
@@ -314,7 +357,10 @@ fn main() -> Result<()> {
                     initial_tab = AppTab::Dashboard;
                 }
                 unknown if unknown.starts_with('-') => {
-                    eprintln!("Unknown argument: {}\nRun 'stasis --help' for usage.", unknown);
+                    eprintln!(
+                        "Unknown argument: {}\nRun 'stasis --help' for usage.",
+                        unknown
+                    );
                     std::process::exit(1);
                 }
                 _ => {}
@@ -324,10 +370,8 @@ fn main() -> Result<()> {
 
     // By default, `stasis` opens the dedicated native desktop application directly!
     // Pass `-i` or `--cli` to run inside the existing terminal shell.
-    if !force_inline {
-        if spawn_desktop_window(&args[1..]).is_ok() {
-            return Ok(());
-        }
+    if !force_inline && spawn_desktop_window(&args[1..]).is_ok() {
+        return Ok(());
     }
 
     setup_panic_hook();
@@ -394,7 +438,9 @@ fn run_app<B: ratatui::backend::Backend>(
                     }
                     Event::Mouse(mouse) => {
                         match mouse.kind {
-                            MouseEventKind::Down(_) | MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                            MouseEventKind::Down(_)
+                            | MouseEventKind::ScrollDown
+                            | MouseEventKind::ScrollUp => {
                                 let term_size = terminal.size()?;
                                 handle_mouse_event(app, mouse, term_size.width, term_size.height);
                                 need_redraw = true;
@@ -473,28 +519,24 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
     }
 
     match mouse.kind {
-        MouseEventKind::ScrollDown => {
-            match app.active_tab {
-                AppTab::Network => app.next_socket(),
-                AppTab::Processes => app.next_process(),
-                AppTab::Applications => app.next_app(),
-                AppTab::Services => app.next_service(),
-                AppTab::Autostart => app.next_autostart(),
-                AppTab::Cleaner => app.next_cleaner_category(),
-                _ => {}
-            }
-        }
-        MouseEventKind::ScrollUp => {
-            match app.active_tab {
-                AppTab::Network => app.prev_socket(),
-                AppTab::Processes => app.prev_process(),
-                AppTab::Applications => app.prev_app(),
-                AppTab::Services => app.prev_service(),
-                AppTab::Autostart => app.prev_autostart(),
-                AppTab::Cleaner => app.prev_cleaner_category(),
-                _ => {}
-            }
-        }
+        MouseEventKind::ScrollDown => match app.active_tab {
+            AppTab::Network => app.next_socket(),
+            AppTab::Processes => app.next_process(),
+            AppTab::Applications => app.next_app(),
+            AppTab::Services => app.next_service(),
+            AppTab::Autostart => app.next_autostart(),
+            AppTab::Cleaner => app.next_cleaner_category(),
+            _ => {}
+        },
+        MouseEventKind::ScrollUp => match app.active_tab {
+            AppTab::Network => app.prev_socket(),
+            AppTab::Processes => app.prev_process(),
+            AppTab::Applications => app.prev_app(),
+            AppTab::Services => app.prev_service(),
+            AppTab::Autostart => app.prev_autostart(),
+            AppTab::Cleaner => app.prev_cleaner_category(),
+            _ => {}
+        },
         MouseEventKind::Down(MouseButton::Left) => {
             // 1. Top Tab Bar Click (Rows 0, 1, 2)
             if mouse.row <= 2 {
@@ -507,7 +549,8 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                     let tab_len = (title_text.chars().count() + 1) as u16;
                     let divider_len = if i + 1 < tabs.len() { 3u16 } else { 0u16 };
 
-                    if mouse.column >= current_x && mouse.column < current_x + tab_len + divider_len {
+                    if mouse.column >= current_x && mouse.column < current_x + tab_len + divider_len
+                    {
                         clicked_tab = Some(*tab);
                         break;
                     }
@@ -612,7 +655,10 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                 AppTab::Applications => {
                     // Only process clicks strictly inside the left table bounds (0 to 65% width, rows 9 to bottom)
                     let table_width = (width * 65) / 100;
-                    if mouse.column <= table_width && mouse.row >= 9 && mouse.row < height.saturating_sub(2) {
+                    if mouse.column <= table_width
+                        && mouse.row >= 9
+                        && mouse.row < height.saturating_sub(2)
+                    {
                         let visible_row = (mouse.row - 9) as usize;
                         let offset = app.app_table_state.offset();
                         let filtered = app.app_mgr.filtered_items();
@@ -643,7 +689,9 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
 
 fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
     // Global quit on Ctrl+C
-    if modifiers.contains(KeyModifiers::CONTROL) && (code == KeyCode::Char('c') || code == KeyCode::Char('C')) {
+    if modifiers.contains(KeyModifiers::CONTROL)
+        && (code == KeyCode::Char('c') || code == KeyCode::Char('C'))
+    {
         app.should_quit = true;
         return;
     }
@@ -653,7 +701,8 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             let action_clone = action.clone();
             match code {
                 KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => {
-                    let needs_elevation = action_clone.requires_elevation(app.service_mgr.user_mode);
+                    let needs_elevation =
+                        action_clone.requires_elevation(app.service_mgr.user_mode);
                     if needs_elevation && !app.is_root() {
                         app.input_mode = InputMode::SudoPasswordModal {
                             pending_action: Box::new(action_clone),
@@ -698,7 +747,9 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                         app.input_mode = InputMode::SudoPasswordModal {
                             pending_action: Box::new(action),
                             password: String::new(),
-                            error_msg: Some("Authentication failed: Incorrect sudo password".to_string()),
+                            error_msg: Some(
+                                "Authentication failed: Incorrect sudo password".to_string(),
+                            ),
                         };
                     }
                 }
@@ -836,7 +887,11 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     };
                 }
                 KeyCode::BackTab | KeyCode::Up => {
-                    active_field = if active_field == 0 { 2 } else { active_field - 1 };
+                    active_field = if active_field == 0 {
+                        2
+                    } else {
+                        active_field - 1
+                    };
                     app.input_mode = InputMode::NewAutostartModal {
                         name,
                         exec,
@@ -959,12 +1014,11 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
 
             // Tab-specific keybindings
             match app.active_tab {
-                AppTab::Dashboard => match code {
-                    KeyCode::Char('r') => {
+                AppTab::Dashboard => {
+                    if let KeyCode::Char('r') = code {
                         app.tick();
                     }
-                    _ => {}
-                },
+                }
                 AppTab::Network => match code {
                     KeyCode::Down | KeyCode::Char('j') => app.next_socket(),
                     KeyCode::Up => app.prev_socket(),
@@ -976,23 +1030,20 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                         app.search_input = app.network_mgr.filter.clone();
                         app.input_mode = InputMode::Search;
                     }
-                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Char('x') | KeyCode::Delete => {
+                    KeyCode::Char('k')
+                    | KeyCode::Char('K')
+                    | KeyCode::Char('x')
+                    | KeyCode::Delete => {
                         let filtered = app.network_mgr.filtered_sockets();
                         if let Some(&i) = app.network_table_state.selected().as_ref() {
                             if let Some(s) = filtered.get(i) {
-                                let action = ConfirmAction::KillPort {
-                                    port: s.local_port,
-                                    proto: s.proto.clone(),
-                                    proc_name: s.proc_name.clone(),
-                                    pid: s.pid,
-                                };
-                                if action.requires_elevation(false) && !app.is_root() {
-                                    app.input_mode = InputMode::SudoPasswordModal {
-                                        pending_action: Box::new(action),
-                                        password: String::new(),
-                                        error_msg: None,
+                                if s.pid.is_some() && s.proc_name != "-" {
+                                    let action = ConfirmAction::KillPort {
+                                        port: s.local_port,
+                                        proto: s.proto.clone(),
+                                        proc_name: s.proc_name.clone(),
+                                        pid: s.pid,
                                     };
-                                } else {
                                     app.input_mode = InputMode::ConfirmModal(action);
                                 }
                             }
@@ -1012,7 +1063,10 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                         app.search_input = app.process_mgr.filter.clone();
                         app.input_mode = InputMode::Search;
                     }
-                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Char('x') | KeyCode::Delete => {
+                    KeyCode::Char('k')
+                    | KeyCode::Char('K')
+                    | KeyCode::Char('x')
+                    | KeyCode::Delete => {
                         if let Some(p) = app.selected_process() {
                             if p.is_critical {
                                 app.show_toast(
@@ -1037,9 +1091,8 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                         if let Some(p) = app.selected_process() {
                             let pid = p.pid;
                             let name = p.name.clone();
-                            app.input_mode = InputMode::ConfirmModal(
-                                ConfirmAction::TerminateProcess(pid, name),
-                            );
+                            app.input_mode =
+                                InputMode::ConfirmModal(ConfirmAction::TerminateProcess(pid, name));
                         }
                     }
                     KeyCode::Char('p') => {
@@ -1088,52 +1141,54 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     }
                     _ => {}
                 },
-                AppTab::Services => match code {
-                    KeyCode::Down | KeyCode::Char('j') => app.next_service(),
-                    KeyCode::Up | KeyCode::Char('k') => app.prev_service(),
-                    KeyCode::Char('f') => app.cycle_service_filter(),
-                    KeyCode::Char('u') => app.toggle_service_mode(),
-                    KeyCode::Char('/') => {
-                        app.search_input = app.service_mgr.search_query.clone();
-                        app.input_mode = InputMode::Search;
-                    }
-                    KeyCode::Char('s') => {
-                        if let Some(unit) = app.selected_service_unit() {
-                            app.input_mode = InputMode::ConfirmModal(
-                                ConfirmAction::ServiceAction("start".to_string(), unit),
-                            );
+                AppTab::Services => {
+                    match code {
+                        KeyCode::Down | KeyCode::Char('j') => app.next_service(),
+                        KeyCode::Up | KeyCode::Char('k') => app.prev_service(),
+                        KeyCode::Char('f') => app.cycle_service_filter(),
+                        KeyCode::Char('u') => app.toggle_service_mode(),
+                        KeyCode::Char('/') => {
+                            app.search_input = app.service_mgr.search_query.clone();
+                            app.input_mode = InputMode::Search;
                         }
-                    }
-                    KeyCode::Char('x') => {
-                        if let Some(unit) = app.selected_service_unit() {
-                            app.input_mode = InputMode::ConfirmModal(
-                                ConfirmAction::ServiceAction("stop".to_string(), unit),
-                            );
+                        KeyCode::Char('s') => {
+                            if let Some(unit) = app.selected_service_unit() {
+                                app.input_mode = InputMode::ConfirmModal(
+                                    ConfirmAction::ServiceAction("start".to_string(), unit),
+                                );
+                            }
                         }
-                    }
-                    KeyCode::Char('r') => {
-                        if let Some(unit) = app.selected_service_unit() {
-                            app.input_mode = InputMode::ConfirmModal(
-                                ConfirmAction::ServiceAction("restart".to_string(), unit),
-                            );
+                        KeyCode::Char('x') => {
+                            if let Some(unit) = app.selected_service_unit() {
+                                app.input_mode = InputMode::ConfirmModal(
+                                    ConfirmAction::ServiceAction("stop".to_string(), unit),
+                                );
+                            }
                         }
-                    }
-                    KeyCode::Char('e') => {
-                        if let Some(unit) = app.selected_service_unit() {
-                            app.input_mode = InputMode::ConfirmModal(
-                                ConfirmAction::ServiceAction("enable".to_string(), unit),
-                            );
+                        KeyCode::Char('r') => {
+                            if let Some(unit) = app.selected_service_unit() {
+                                app.input_mode = InputMode::ConfirmModal(
+                                    ConfirmAction::ServiceAction("restart".to_string(), unit),
+                                );
+                            }
                         }
-                    }
-                    KeyCode::Char('d') => {
-                        if let Some(unit) = app.selected_service_unit() {
-                            app.input_mode = InputMode::ConfirmModal(
-                                ConfirmAction::ServiceAction("disable".to_string(), unit),
-                            );
+                        KeyCode::Char('e') => {
+                            if let Some(unit) = app.selected_service_unit() {
+                                app.input_mode = InputMode::ConfirmModal(
+                                    ConfirmAction::ServiceAction("enable".to_string(), unit),
+                                );
+                            }
                         }
+                        KeyCode::Char('d') => {
+                            if let Some(unit) = app.selected_service_unit() {
+                                app.input_mode = InputMode::ConfirmModal(
+                                    ConfirmAction::ServiceAction("disable".to_string(), unit),
+                                );
+                            }
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                },
+                }
                 AppTab::Autostart => match code {
                     KeyCode::Down | KeyCode::Char('j') => app.next_autostart(),
                     KeyCode::Up | KeyCode::Char('k') => app.prev_autostart(),
@@ -1172,7 +1227,10 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     KeyCode::Char('f') => {
                         app.app_mgr.source_filter = app.app_mgr.source_filter.next();
                         app.app_table_state.select(Some(0));
-                        app.show_toast(&format!("Filter: {}", app.app_mgr.source_filter.label()), false);
+                        app.show_toast(
+                            &format!("Filter: {}", app.app_mgr.source_filter.label()),
+                            false,
+                        );
                     }
                     KeyCode::Char('s') => {
                         app.app_mgr.cycle_sort();
@@ -1180,7 +1238,17 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                     }
                     KeyCode::Char('d') => {
                         app.app_mgr.toggle_sort_direction();
-                        app.show_toast(&format!("Sort direction: {}", if app.app_mgr.sort_descending { "Descending" } else { "Ascending" }), false);
+                        app.show_toast(
+                            &format!(
+                                "Sort direction: {}",
+                                if app.app_mgr.sort_descending {
+                                    "Descending"
+                                } else {
+                                    "Ascending"
+                                }
+                            ),
+                            false,
+                        );
                     }
                     KeyCode::Char('/') => {
                         app.search_input = app.app_mgr.search_query.clone();
@@ -1194,9 +1262,8 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                                     true,
                                 );
                             } else {
-                                app.input_mode = InputMode::ConfirmModal(
-                                    ConfirmAction::UninstallApp(item),
-                                );
+                                app.input_mode =
+                                    InputMode::ConfirmModal(ConfirmAction::UninstallApp(item));
                             }
                         }
                     }

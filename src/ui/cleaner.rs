@@ -26,7 +26,10 @@ fn render_categories_list(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.bg))
-        .title(Span::styled(" 󰃢 System Cleaner Categories ", theme.title_style()));
+        .title(Span::styled(
+            " 󰃢 System Cleaner Categories ",
+            theme.title_style(),
+        ));
 
     let items: Vec<ListItem> = app
         .cleaner
@@ -37,28 +40,44 @@ fn render_categories_list(f: &mut Frame, app: &App, area: Rect) {
             let is_focused = i == app.cleaner_selected_index;
             let check_icon = if cat.selected { "󰄲" } else { "󰄱" };
             let check_style = if cat.selected {
-                Style::default().fg(theme.success).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 theme.dim_style()
             };
 
             let name_style = if is_focused {
-                Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)
             };
 
             let size_str = format_bytes(cat.total_size_bytes);
             let size_style = if cat.total_size_bytes > 0 {
-                Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 theme.dim_style()
             };
 
             let tag_badge = if cat.requires_root {
-                Span::styled(" [⚠️ ROOT / SYSTEM] ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
+                Span::styled(
+                    " [⚠️ ROOT / SYSTEM] ",
+                    Style::default()
+                        .fg(theme.warning)
+                        .add_modifier(Modifier::BOLD),
+                )
             } else {
-                Span::styled(" [SAFE USER CACHE] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD))
+                Span::styled(
+                    " [SAFE USER CACHE] ",
+                    Style::default()
+                        .fg(theme.success)
+                        .add_modifier(Modifier::BOLD),
+                )
             };
 
             let lines = vec![
@@ -66,7 +85,10 @@ fn render_categories_list(f: &mut Frame, app: &App, area: Rect) {
                     Span::styled(format!(" {} ", check_icon), check_style),
                     Span::styled(&cat.name, name_style),
                     tag_badge,
-                    Span::styled(format!("{} ({} files)", size_str, cat.file_count), size_style),
+                    Span::styled(
+                        format!("{} ({} files)", size_str, cat.file_count),
+                        size_style,
+                    ),
                 ]),
                 Line::from(vec![
                     Span::raw("     "),
@@ -74,7 +96,14 @@ fn render_categories_list(f: &mut Frame, app: &App, area: Rect) {
                 ]),
                 Line::from(vec![
                     Span::raw("     "),
-                    Span::styled("Target paths: ", if is_focused { Style::default().fg(theme.secondary) } else { theme.dim_style() }),
+                    Span::styled(
+                        "Target paths: ",
+                        if is_focused {
+                            Style::default().fg(theme.secondary)
+                        } else {
+                            theme.dim_style()
+                        },
+                    ),
                     Span::styled(
                         cat.paths
                             .iter()
@@ -106,7 +135,10 @@ fn render_summary_panel(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󱕚 Cleaner Summary & Actions ", theme.title_style()));
+        .title(Span::styled(
+            " 󱕚 Cleaner Summary & Actions ",
+            theme.title_style(),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -131,20 +163,35 @@ fn render_summary_panel(f: &mut Frame, app: &App, area: Rect) {
 
     let stats_text = vec![
         Line::from(vec![
-            Span::styled(" Total Size: ", Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " Total Size: ",
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 &total_bytes_str,
-                Style::default().fg(theme.success).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::from(vec![
-            Span::styled(" Total Files: ", Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
-            Span::styled(format!("{}", total_files), Style::default().fg(theme.warning)),
+            Span::styled(
+                " Total Files: ",
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!("{}", total_files),
+                Style::default().fg(theme.warning),
+            ),
         ]),
         Line::from(vec![
             Span::styled(" Status: ", theme.dim_style()),
             Span::styled(
-                if app.cleaner.is_busy { "Scanning..." } else { "Ready" },
+                if app.cleaner.is_busy {
+                    "Scanning..."
+                } else {
+                    "Ready"
+                },
                 Style::default().fg(theme.accent),
             ),
         ]),
@@ -161,20 +208,45 @@ fn render_summary_panel(f: &mut Frame, app: &App, area: Rect) {
 
     let actions_text = vec![
         Line::from(vec![
-            Span::styled(" [s] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [s] ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Scan System", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [Space] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [Space] ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Toggle Selection", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [a] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [a] ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Select / Deselect All", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [c] / [Enter] ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
-            Span::styled("Clean Selected Files", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [c] / [Enter] ",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                "Clean Selected Files",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
     ];
 

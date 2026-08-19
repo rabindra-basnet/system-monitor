@@ -29,6 +29,12 @@ pub struct GpuCollector {
     pub is_available: bool,
 }
 
+impl Default for GpuCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GpuCollector {
     pub fn new() -> Self {
         let mut collector = Self {
@@ -82,7 +88,11 @@ impl GpuCollector {
         let vram_used_mb = parts[3].parse::<u64>().unwrap_or(0);
         let vram_total_mb = parts[4].parse::<u64>().unwrap_or(0);
         let temperature = parts[5].parse::<u16>().unwrap_or(0);
-        let power_w = if parts.len() > 6 { parts[6].parse::<f32>().unwrap_or(0.0) } else { 0.0 };
+        let power_w = if parts.len() > 6 {
+            parts[6].parse::<f32>().unwrap_or(0.0)
+        } else {
+            0.0
+        };
 
         let mut history = VecDeque::with_capacity(GPU_HISTORY_LEN);
         for _ in 0..GPU_HISTORY_LEN {
@@ -92,7 +102,10 @@ impl GpuCollector {
         // Query active GPU compute / graphics apps
         let mut processes = Vec::new();
         if let Ok(proc_out) = Command::new("nvidia-smi")
-            .args(["--query-compute-apps=pid,process_name,used_memory", "--format=csv,noheader,nounits"])
+            .args([
+                "--query-compute-apps=pid,process_name,used_memory",
+                "--format=csv,noheader,nounits",
+            ])
             .output()
         {
             let proc_text = String::from_utf8_lossy(&proc_out.stdout);
@@ -128,7 +141,9 @@ impl GpuCollector {
     fn query_drm_sysfs(&self) -> Option<GpuInfo> {
         // Fallback for AMD / Intel sysfs DRM nodes
         if std::path::Path::new("/sys/class/drm/card0/device/gpu_busy_percent").exists() {
-            if let Ok(util_str) = std::fs::read_to_string("/sys/class/drm/card0/device/gpu_busy_percent") {
+            if let Ok(util_str) =
+                std::fs::read_to_string("/sys/class/drm/card0/device/gpu_busy_percent")
+            {
                 let util = util_str.trim().parse::<u16>().unwrap_or(0);
                 let mut history = VecDeque::with_capacity(GPU_HISTORY_LEN);
                 for _ in 0..GPU_HISTORY_LEN {

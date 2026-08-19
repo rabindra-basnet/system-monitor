@@ -69,6 +69,12 @@ pub struct ProcessManager {
     pub filter: String,
 }
 
+impl Default for ProcessManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProcessManager {
     pub fn new() -> Self {
         let users = Users::new_with_refreshed_list();
@@ -166,7 +172,8 @@ impl ProcessManager {
                 proc_name
             };
 
-            let is_critical = is_system_critical_process(pid.as_u32(), &effective_name, &cmd, &user_str);
+            let is_critical =
+                is_system_critical_process(pid.as_u32(), &effective_name, &cmd, &user_str);
 
             items.push(ProcessItem {
                 pid: pid.as_u32(),

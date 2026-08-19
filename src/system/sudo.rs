@@ -38,7 +38,11 @@ pub fn validate_sudo_password(password: &str) -> bool {
     }
 }
 
-pub fn run_elevated_command(cmd: &str, args: &[&str], sudo_pass: Option<&str>) -> Result<String, String> {
+pub fn run_elevated_command(
+    cmd: &str,
+    args: &[&str],
+    sudo_pass: Option<&str>,
+) -> Result<String, String> {
     if is_root() {
         let output = Command::new(cmd)
             .args(args)
@@ -78,7 +82,9 @@ pub fn run_elevated_command(cmd: &str, args: &[&str], sudo_pass: Option<&str>) -
             let _ = stdin.flush();
         }
 
-        let output = child.wait_with_output().map_err(|e| format!("Wait failed: {}", e))?;
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("Wait failed: {}", e))?;
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
         } else {

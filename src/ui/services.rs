@@ -29,23 +29,57 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg));
 
-    let scope_str = if app.service_mgr.user_mode { "User (--user)" } else { "System (root)" };
+    let scope_str = if app.service_mgr.user_mode {
+        "User (--user)"
+    } else {
+        "System (root)"
+    };
     let filter_str = app.service_mgr.filter_state.label();
 
     let search_display = if app.service_mgr.search_query.is_empty() {
         Span::styled("None (Press '/' to filter)", theme.dim_style())
     } else {
-        Span::styled(&app.service_mgr.search_query, Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
+        Span::styled(
+            &app.service_mgr.search_query,
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        )
     };
 
     let line = Line::from(vec![
-        Span::styled(" 󰒺 Scope [u]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(scope_str, Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " 󰒺 Scope [u]: ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            scope_str,
+            Style::default()
+                .fg(theme.secondary)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   |   "),
-        Span::styled(" 󰄲 Status [f]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(filter_str, Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " 󰄲 Status [f]: ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            filter_str,
+            Style::default()
+                .fg(theme.success)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   |   "),
-        Span::styled("  Search [/]: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "  Search [/]: ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
         search_display,
         Span::raw("   |   "),
         Span::styled(
@@ -69,7 +103,10 @@ fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(table_pct), Constraint::Percentage(sidebar_pct)])
+        .constraints([
+            Constraint::Percentage(table_pct),
+            Constraint::Percentage(sidebar_pct),
+        ])
         .split(area);
 
     render_services_table(f, app, chunks[0]);
@@ -89,9 +126,17 @@ fn render_services_table(f: &mut Frame, app: &mut App, area: Rect) {
     let rows: Vec<Row> = filtered
         .iter()
         .map(|s| {
-            let is_sys_core = s.name.starts_with("systemd-") || s.name.starts_with("dbus") || s.name.starts_with("udev") || s.name.starts_with("polkit");
+            let is_sys_core = s.name.starts_with("systemd-")
+                || s.name.starts_with("dbus")
+                || s.name.starts_with("udev")
+                || s.name.starts_with("polkit");
             let tag_cell = if s.is_user_unit {
-                Span::styled(" [USER] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD))
+                Span::styled(
+                    " [USER] ",
+                    Style::default()
+                        .fg(theme.success)
+                        .add_modifier(Modifier::BOLD),
+                )
             } else if is_sys_core {
                 Span::styled(" [🔒 SYSTEM] ", theme.dim_style())
             } else {
@@ -105,11 +150,15 @@ fn render_services_table(f: &mut Frame, app: &mut App, area: Rect) {
             };
 
             let active_style = if s.active_state == "failed" {
-                Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD)
             } else if is_sys_core && !s.is_user_unit {
                 theme.dim_style()
             } else if s.active_state == "active" {
-                Style::default().fg(theme.success).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 theme.dim_style()
             };
@@ -119,7 +168,11 @@ fn render_services_table(f: &mut Frame, app: &mut App, area: Rect) {
                 Cell::from(s.name.clone()).style(name_style),
                 Cell::from(s.active_state.clone()).style(active_style),
                 Cell::from(s.sub_state.clone()).style(theme.dim_style()),
-                Cell::from(s.description.clone()).style(if is_sys_core && !s.is_user_unit { theme.dim_style() } else { Style::default().fg(theme.fg) }),
+                Cell::from(s.description.clone()).style(if is_sys_core && !s.is_user_unit {
+                    theme.dim_style()
+                } else {
+                    Style::default().fg(theme.fg)
+                }),
             ];
 
             Row::new(cells).height(1)
@@ -149,7 +202,10 @@ fn render_services_table(f: &mut Frame, app: &mut App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.bg))
-        .title(Span::styled("  systemd Service Units ", theme.title_style()));
+        .title(Span::styled(
+            "  systemd Service Units ",
+            theme.title_style(),
+        ));
 
     let table = Table::new(rows, widths)
         .header(header)
@@ -166,7 +222,10 @@ fn render_service_sidebar(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󱕚 Unit Details & Controls ", theme.title_style()));
+        .title(Span::styled(
+            " 󱕚 Unit Details & Controls ",
+            theme.title_style(),
+        ));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -174,9 +233,9 @@ fn render_service_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(8),  // Details card
-            Constraint::Length(9),  // Action controls
-            Constraint::Min(3),     // Tip
+            Constraint::Length(8), // Details card
+            Constraint::Length(9), // Action controls
+            Constraint::Min(3),    // Tip
         ])
         .split(inner);
 
@@ -187,21 +246,42 @@ fn render_service_sidebar(f: &mut Frame, app: &App, area: Rect) {
         .and_then(|idx| filtered.get(idx).copied());
 
     if let Some(s) = selected_unit {
-        let is_sys_core = s.name.starts_with("systemd-") || s.name.starts_with("dbus") || s.name.starts_with("udev") || s.name.starts_with("polkit");
+        let is_sys_core = s.name.starts_with("systemd-")
+            || s.name.starts_with("dbus")
+            || s.name.starts_with("udev")
+            || s.name.starts_with("polkit");
 
         let details_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(if is_sys_core && !s.is_user_unit { theme.warning } else { theme.border }))
+            .border_style(Style::default().fg(if is_sys_core && !s.is_user_unit {
+                theme.warning
+            } else {
+                theme.border
+            }))
             .title(Span::styled(" Service Info ", theme.title_style()));
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Unit: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "Unit: ",
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(&s.name, Style::default().fg(theme.fg)),
             ]),
             Line::from(vec![
                 Span::styled("Active: ", Style::default().fg(theme.accent)),
-                Span::styled(&s.active_state, if s.active_state == "active" { Style::default().fg(theme.success).add_modifier(Modifier::BOLD) } else { theme.dim_style() }),
+                Span::styled(
+                    &s.active_state,
+                    if s.active_state == "active" {
+                        Style::default()
+                            .fg(theme.success)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        theme.dim_style()
+                    },
+                ),
                 Span::raw(" ("),
                 Span::styled(&s.sub_state, theme.dim_style()),
                 Span::raw(")"),
@@ -215,7 +295,9 @@ fn render_service_sidebar(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(&s.description, Style::default().fg(theme.fg)),
             ]),
         ];
-        let p = Paragraph::new(text).block(details_block).wrap(Wrap { trim: true });
+        let p = Paragraph::new(text)
+            .block(details_block)
+            .wrap(Wrap { trim: true });
         f.render_widget(p, rows[0]);
     } else {
         let p = Paragraph::new("No service unit selected").style(theme.dim_style());
@@ -230,21 +312,46 @@ fn render_service_sidebar(f: &mut Frame, app: &App, area: Rect) {
 
     let actions_text = vec![
         Line::from(vec![
-            Span::styled(" [s] ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [s] ",
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Start Service", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [x] ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [x] ",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Stop Service", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [r] ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [r] ",
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Restart Service", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled(" [e] ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [e] ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Enable at Boot  ", Style::default().fg(theme.fg)),
-            Span::styled(" [d] ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [d] ",
+                Style::default()
+                    .fg(theme.secondary)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Disable", Style::default().fg(theme.fg)),
         ]),
     ];
@@ -253,7 +360,12 @@ fn render_service_sidebar(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(p_actions, rows[1]);
 
     let note_text = vec![
-        Line::from(Span::styled("💡 Tip:", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))),
+        Line::from(Span::styled(
+            "💡 Tip:",
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        )),
         Line::from(Span::styled(
             "Press 'u' to switch between System (root) and User (--user) service units.",
             theme.dim_style(),

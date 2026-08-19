@@ -61,7 +61,12 @@ fn render_tabs_header(f: &mut Frame, app: &App, area: Rect) {
             };
 
             Line::from(vec![
-                Span::styled(num_str, Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    num_str,
+                    Style::default()
+                        .fg(theme.secondary)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(title_str),
             ])
         })
@@ -123,9 +128,17 @@ fn render_bottom_bar(f: &mut Frame, app: &App, area: Rect) {
 
     let line = if is_compact {
         Line::from(vec![
-            Span::styled(" [1-7] Tabs ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [1-7] Tabs ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw("│"),
-            Span::styled(format!(" {} ", specific_hint), Style::default().fg(theme.fg)),
+            Span::styled(
+                format!(" {} ", specific_hint),
+                Style::default().fg(theme.fg),
+            ),
             Span::raw("│"),
             Span::styled(" [t] Theme ", Style::default().fg(theme.secondary)),
             Span::raw("│"),
@@ -133,9 +146,17 @@ fn render_bottom_bar(f: &mut Frame, app: &App, area: Rect) {
         ])
     } else {
         Line::from(vec![
-            Span::styled(" [1-7/Tab] Switch Tabs ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                " [1-7/Tab] Switch Tabs ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" │ "),
-            Span::styled(format!(" {} ", specific_hint), Style::default().fg(theme.fg)),
+            Span::styled(
+                format!(" {} ", specific_hint),
+                Style::default().fg(theme.fg),
+            ),
             Span::raw(" │ "),
             Span::styled(" [t] Theme ", Style::default().fg(theme.secondary)),
             Span::styled(format!("({})", app.theme.mode.name()), theme.dim_style()),

@@ -16,6 +16,12 @@ pub struct AutostartManager {
     pub search_query: String,
 }
 
+impl Default for AutostartManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AutostartManager {
     pub fn new() -> Self {
         let mut mgr = Self {
@@ -37,7 +43,7 @@ impl AutostartManager {
             if let Ok(entries) = fs::read_dir(&user_autostart) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().map_or(false, |ext| ext == "desktop") {
+                    if path.extension().is_some_and(|ext| ext == "desktop") {
                         if let Some(item) = Self::parse_desktop_file(&path, true) {
                             self.items.push(item);
                         }
@@ -51,7 +57,7 @@ impl AutostartManager {
             if let Ok(entries) = fs::read_dir(&system_autostart) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().map_or(false, |ext| ext == "desktop") {
+                    if path.extension().is_some_and(|ext| ext == "desktop") {
                         if let Some(file_name) = path.file_name() {
                             let user_override = user_autostart.join(file_name);
                             if !user_override.exists() {
@@ -66,7 +72,8 @@ impl AutostartManager {
         }
 
         // Sort items alphabetically by name
-        self.items.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        self.items
+            .sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     }
 
     fn parse_desktop_file(path: &Path, is_user: bool) -> Option<AutostartItem> {
@@ -88,8 +95,10 @@ impl AutostartManager {
             } else if line.starts_with("Hidden=") {
                 hidden = line.trim_start_matches("Hidden=").to_lowercase() == "true";
             } else if line.starts_with("X-GNOME-Autostart-enabled=") {
-                autostart_enabled =
-                    line.trim_start_matches("X-GNOME-Autostart-enabled=").to_lowercase() != "false";
+                autostart_enabled = line
+                    .trim_start_matches("X-GNOME-Autostart-enabled=")
+                    .to_lowercase()
+                    != "false";
             }
         }
 
@@ -185,12 +194,7 @@ impl AutostartManager {
         ))
     }
 
-    pub fn add_entry(
-        &mut self,
-        name: &str,
-        exec: &str,
-        comment: &str,
-    ) -> Result<String, String> {
+    pub fn add_entry(&mut self, name: &str, exec: &str, comment: &str) -> Result<String, String> {
         if name.trim().is_empty() || exec.trim().is_empty() {
             return Err("Name and Command cannot be empty".to_string());
         }
@@ -206,7 +210,8 @@ impl AutostartManager {
             .chars()
             .map(|c| if c.is_alphanumeric() { c } else { '_' })
             .collect();
-        let file_path = user_autostart_dir.join(format!("{}.desktop", sanitized_name.to_lowercase()));
+        let file_path =
+            user_autostart_dir.join(format!("{}.desktop", sanitized_name.to_lowercase()));
 
         let content = format!(
             "[Desktop Entry]\nType=Application\nName={}\nExec={}\nComment={}\nHidden=false\nX-GNOME-Autostart-enabled=true\n",
@@ -229,7 +234,10 @@ impl AutostartManager {
 
         let item = &self.items[index];
         if !item.is_user {
-            return Err("Cannot remove system-wide autostart file. Toggle it to disable instead.".to_string());
+            return Err(
+                "Cannot remove system-wide autostart file. Toggle it to disable instead."
+                    .to_string(),
+            );
         }
 
         if item.file_path.exists() {

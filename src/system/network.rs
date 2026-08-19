@@ -37,6 +37,8 @@ impl NetworkFilterMode {
 pub struct SocketEntry {
     pub proto: String,
     pub state: String,
+    pub recv_q: u64,
+    pub send_q: u64,
     pub local_addr: String,
     pub local_port: u16,
     pub peer_addr: String,
@@ -47,12 +49,26 @@ pub struct SocketEntry {
 }
 
 #[derive(Debug, Clone)]
+pub struct AppNetworkUsage {
+    pub name: String,
+    pub pid: Option<u32>,
+    pub socket_count: usize,
+    pub listening_count: usize,
+    pub established_count: usize,
+    pub tcp_count: usize,
+    pub udp_count: usize,
+    pub recv_q_bytes: u64,
+    pub send_q_bytes: u64,
+}
+
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct NetworkSummary {
     pub listening_ports: Vec<SocketEntry>,
     pub active_connections: Vec<SocketEntry>,
     pub total_sockets: usize,
     pub top_network_processes: Vec<(String, usize)>,
+    pub app_network_usage: Vec<AppNetworkUsage>,
 }
 
 pub struct NetworkManager {
@@ -60,6 +76,12 @@ pub struct NetworkManager {
     pub summary: NetworkSummary,
     pub filter: String,
     pub filter_mode: NetworkFilterMode,
+}
+
+impl Default for NetworkManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NetworkManager {
@@ -71,6 +93,7 @@ impl NetworkManager {
                 active_connections: Vec::new(),
                 total_sockets: 0,
                 top_network_processes: Vec::new(),
+                app_network_usage: Vec::new(),
             },
             filter: String::new(),
             filter_mode: NetworkFilterMode::All,
@@ -90,11 +113,15 @@ impl NetworkManager {
                 if parts.len() >= 5 {
                     let proto = parts[0].to_uppercase();
                     let state = parts[1].to_uppercase();
+                    let recv_q = parts[2].parse::<u64>().unwrap_or(0);
+                    let send_q = parts[3].parse::<u64>().unwrap_or(0);
                     let local = parts[4];
                     let peer = if parts.len() > 5 { parts[5] } else { "*:*" };
 
                     let (local_ip, local_port) = match local.rsplit_once(':') {
-                        Some((ip, port_str)) => (ip.to_string(), port_str.parse::<u16>().unwrap_or(0)),
+                        Some((ip, port_str)) => {
+                            (ip.to_string(), port_str.parse::<u16>().unwrap_or(0))
+                        }
                         None => (local.to_string(), 0),
                     };
 
@@ -115,7 +142,10 @@ impl NetworkManager {
                         }
                         if let Some(pid_start) = user_str.find("pid=") {
                             let after_pid = &user_str[pid_start + 4..];
-                            let pid_digits: String = after_pid.chars().take_while(|c| c.is_ascii_digit()).collect();
+                            let pid_digits: String = after_pid
+                                .chars()
+                                .take_while(|c| c.is_ascii_digit())
+                                .collect();
                             if let Ok(p) = pid_digits.parse::<u32>() {
                                 pid = Some(p);
                             }
@@ -123,13 +153,17 @@ impl NetworkManager {
                     }
 
                     let is_system = match pid {
-                        Some(p) => p <= 1000 || proc_name == "systemd-resolved" || proc_name == "cupsd",
+                        Some(p) => {
+                            p <= 1000 || proc_name == "systemd-resolved" || proc_name == "cupsd"
+                        }
                         None => true,
                     };
 
                     entries.push(SocketEntry {
                         proto,
                         state,
+                        recv_q,
+                        send_q,
                         local_addr: local_ip,
                         local_port,
                         peer_addr: peer_ip,
@@ -144,11 +178,40 @@ impl NetworkManager {
 
         let mut listening = Vec::new();
         let mut active = Vec::new();
-        let mut proc_counts: HashMap<String, usize> = HashMap::new();
+        let mut app_stats: HashMap<String, AppNetworkUsage> = HashMap::new();
 
         for entry in &entries {
             if entry.proc_name != "-" {
-                *proc_counts.entry(entry.proc_name.clone()).or_insert(0) += 1;
+                let stat =
+                    app_stats
+                        .entry(entry.proc_name.clone())
+                        .or_insert_with(|| AppNetworkUsage {
+                            name: entry.proc_name.clone(),
+                            pid: entry.pid,
+                            socket_count: 0,
+                            listening_count: 0,
+                            established_count: 0,
+                            tcp_count: 0,
+                            udp_count: 0,
+                            recv_q_bytes: 0,
+                            send_q_bytes: 0,
+                        });
+
+                stat.socket_count += 1;
+                stat.recv_q_bytes += entry.recv_q;
+                stat.send_q_bytes += entry.send_q;
+
+                if entry.proto.contains("TCP") {
+                    stat.tcp_count += 1;
+                } else if entry.proto.contains("UDP") {
+                    stat.udp_count += 1;
+                }
+
+                if entry.state == "LISTEN" {
+                    stat.listening_count += 1;
+                } else if entry.state == "ESTAB" || entry.state == "ESTABLISHED" {
+                    stat.established_count += 1;
+                }
             }
 
             if entry.state == "LISTEN" {
@@ -160,8 +223,13 @@ impl NetworkManager {
 
         listening.sort_by_key(|e| e.local_port);
 
-        let mut top_procs: Vec<(String, usize)> = proc_counts.into_iter().collect();
-        top_procs.sort_by(|a, b| b.1.cmp(&a.1));
+        let mut app_usages: Vec<AppNetworkUsage> = app_stats.into_values().collect();
+        app_usages.sort_by(|a, b| b.socket_count.cmp(&a.socket_count));
+
+        let mut top_procs: Vec<(String, usize)> = app_usages
+            .iter()
+            .map(|u| (u.name.clone(), u.socket_count))
+            .collect();
         top_procs.truncate(6);
 
         self.summary = NetworkSummary {
@@ -169,6 +237,7 @@ impl NetworkManager {
             listening_ports: listening,
             active_connections: active,
             top_network_processes: top_procs,
+            app_network_usage: app_usages,
         };
 
         self.sockets = entries;
@@ -178,14 +247,12 @@ impl NetworkManager {
         let q = self.filter.to_lowercase();
         self.sockets
             .iter()
-            .filter(|s| {
-                match self.filter_mode {
-                    NetworkFilterMode::All => true,
-                    NetworkFilterMode::Listening => s.state == "LISTEN",
-                    NetworkFilterMode::Established => s.state == "ESTAB" || s.state == "ESTABLISHED",
-                    NetworkFilterMode::Tcp => s.proto.contains("TCP"),
-                    NetworkFilterMode::Udp => s.proto.contains("UDP"),
-                }
+            .filter(|s| match self.filter_mode {
+                NetworkFilterMode::All => true,
+                NetworkFilterMode::Listening => s.state == "LISTEN",
+                NetworkFilterMode::Established => s.state == "ESTAB" || s.state == "ESTABLISHED",
+                NetworkFilterMode::Tcp => s.proto.contains("TCP"),
+                NetworkFilterMode::Udp => s.proto.contains("UDP"),
             })
             .filter(|s| {
                 if q.is_empty() {
@@ -203,7 +270,13 @@ impl NetworkManager {
             .collect()
     }
 
-    pub fn kill_port(&self, port: u16, proto: &str, pid: Option<u32>, sudo_password: Option<&str>) -> Result<(), String> {
+    pub fn kill_port(
+        &self,
+        port: u16,
+        proto: &str,
+        pid: Option<u32>,
+        sudo_password: Option<&str>,
+    ) -> Result<(), String> {
         let port_str = port.to_string();
         let proto_lower = proto.to_lowercase();
 
@@ -215,9 +288,19 @@ impl NetworkManager {
                     return Ok(());
                 }
             }
-            return crate::system::sudo::run_elevated_command("kill", &["-9", &pid_str], sudo_password).map(|_| ());
+            return crate::system::sudo::run_elevated_command(
+                "kill",
+                &["-9", &pid_str],
+                sudo_password,
+            )
+            .map(|_| ());
         }
 
-        crate::system::sudo::run_elevated_command("fuser", &["-k", "-n", &proto_lower, &port_str], sudo_password).map(|_| ())
+        crate::system::sudo::run_elevated_command(
+            "fuser",
+            &["-k", "-n", &proto_lower, &port_str],
+            sudo_password,
+        )
+        .map(|_| ())
     }
 }

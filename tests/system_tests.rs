@@ -1,5 +1,5 @@
 use stasis::app::{App, AppTab, ConfirmAction};
-use stasis::system::applications::{ApplicationManager, AppSortBy, AppSourceFilter};
+use stasis::system::applications::{AppSortBy, AppSourceFilter, ApplicationManager};
 use stasis::system::cleaner::SystemCleaner;
 use stasis::system::collector::{format_bytes, format_speed, SystemCollector};
 use stasis::system::processes::ProcessManager;
@@ -127,7 +127,8 @@ fn test_sudo_elevation_detection() {
     let sys_clean_action = ConfirmAction::CleanCategories(vec!["Package Caches".to_string()], 100);
     assert!(sys_clean_action.requires_elevation(false));
 
-    let user_service_action = ConfirmAction::ServiceAction("start".to_string(), "test.service".to_string());
+    let user_service_action =
+        ConfirmAction::ServiceAction("start".to_string(), "test.service".to_string());
     assert!(!user_service_action.requires_elevation(true));
     assert!(user_service_action.requires_elevation(false));
 }
@@ -154,5 +155,3 @@ fn test_gpu_collector() {
     // Verify it doesn't panic on systems with or without GPU
     let _ = gpu_col.is_available;
 }
-
-
