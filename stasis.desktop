@@ -1,0 +1,28 @@
+[Desktop Entry]
+Type=Application
+Name=Stasis
+GenericName=System Monitor & Optimizer
+Comment=Stacer-inspired lightweight Linux system monitor, cleaner, and optimizer
+Exec=stasis -g
+Icon=stasis
+Terminal=false
+StartupWMClass=stasis
+Categories=System;Monitor;Utility;Settings;
+Keywords=system;monitor;resources;cpu;memory;cleaner;stacer;taskmanager;optimizer;stasis;
+Actions=Processes;Cleaner;Services;Applications;
+
+[Desktop Action Processes]
+Name=Open Process Manager
+Exec=stasis -g -p
+
+[Desktop Action Cleaner]
+Name=Open System Cleaner
+Exec=stasis -g -c
+
+[Desktop Action Services]
+Name=Open Services
+Exec=stasis -g -s
+
+[Desktop Action Applications]
+Name=Open Uninstaller
+Exec=stasis -g -a
