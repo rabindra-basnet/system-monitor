@@ -561,8 +561,8 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                 if clicked_tab.is_none() && mouse.column < width {
                     let tab_count = tabs.len() as u16;
                     if let Some(tab_width) = width.checked_div(tab_count) {
-                        if tab_width > 0 {
-                            let idx = (mouse.column / tab_width).min(tab_count - 1) as usize;
+                        if let Some(col) = mouse.column.checked_div(tab_width) {
+                            let idx = col.min(tab_count - 1) as usize;
                             clicked_tab = Some(tabs[idx]);
                         }
                     }
