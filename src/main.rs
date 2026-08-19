@@ -580,8 +580,9 @@ fn handle_mouse_event(app: &mut App, mouse: MouseEvent, width: u16, height: u16)
                     }
                 }
                 AppTab::Applications => {
-                    // Header is at row 7, data rows start at row 9
-                    if mouse.row >= 9 && mouse.row < height.saturating_sub(2) {
+                    // Only process clicks strictly inside the left table bounds (0 to 65% width, rows 9 to bottom)
+                    let table_width = (width * 65) / 100;
+                    if mouse.column <= table_width && mouse.row >= 9 && mouse.row < height.saturating_sub(2) {
                         let visible_row = (mouse.row - 9) as usize;
                         let offset = app.app_table_state.offset();
                         let filtered = app.app_mgr.filtered_items();

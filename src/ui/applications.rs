@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::system::applications::AppSortBy;
+use crate::system::applications::{format_installation_age, AppSortBy};
 use crate::system::collector::format_bytes;
 
 pub fn render(f: &mut Frame, app: &mut App, area: Rect) {
@@ -33,6 +33,7 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
 
     let sort_name = match app.app_mgr.sort_by {
         AppSortBy::Size => "Size",
+        AppSortBy::Age => "Age / Installed",
         AppSortBy::Name => "Name",
         AppSortBy::Source => "Source",
     };
@@ -77,7 +78,7 @@ fn render_body(f: &mut Frame, app: &mut App, area: Rect) {
 fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
     let theme = &app.theme;
 
-    let header_cells = ["Scope", "Application / Package", "Version", "Size", "Source", "Summary"]
+    let header_cells = ["Scope", "Application / Package", "Version", "Size", "Age / Installed", "Source", "Summary"]
         .iter()
         .map(|&h| Cell::from(Span::styled(h, theme.header_style())));
     let header = Row::new(header_cells).height(1).bottom_margin(1);
@@ -90,6 +91,12 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
                 (
                     Span::styled(" [🔒 SYSTEM] ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
                     theme.dim_style(),
+                    theme.dim_style(),
+                )
+            } else if item.is_initial_install {
+                (
+                    Span::styled(" [ORIGINAL OS] ", theme.dim_style()),
+                    Style::default().fg(theme.fg),
                     theme.dim_style(),
                 )
             } else {
@@ -113,11 +120,19 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
                 "-".to_string()
             };
 
+            let age_display = format_installation_age(item.installed_time, item.is_initial_install);
+            let age_style = if item.is_initial_install {
+                theme.dim_style()
+            } else {
+                Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)
+            };
+
             let cells = vec![
                 Cell::from(scope_badge),
                 Cell::from(item.name.clone()).style(name_style),
                 Cell::from(item.version.clone()).style(theme.dim_style()),
                 Cell::from(size_display).style(if item.is_essential { theme.dim_style() } else { Style::default().fg(theme.warning) }),
+                Cell::from(age_display).style(age_style),
                 Cell::from(item.source.clone()).style(source_style),
                 Cell::from(item.description.clone()).style(desc_style),
             ];
@@ -128,10 +143,11 @@ fn render_apps_table(f: &mut Frame, app: &mut App, area: Rect) {
 
     let widths = [
         Constraint::Length(14),
-        Constraint::Length(24),
-        Constraint::Length(16),
-        Constraint::Length(12),
+        Constraint::Length(22),
+        Constraint::Length(14),
         Constraint::Length(10),
+        Constraint::Length(15),
+        Constraint::Length(9),
         Constraint::Min(20),
     ];
 
@@ -165,9 +181,9 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(9), // Details card
-            Constraint::Length(6), // Action controls
-            Constraint::Min(3),    // Tip
+            Constraint::Length(10), // Details card
+            Constraint::Length(6),  // Action controls
+            Constraint::Min(3),     // Tip
         ])
         .split(inner);
 
@@ -191,9 +207,13 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
 
         let status_badge = if item.is_essential {
             Span::styled(" [🔒 Core System — Protected]", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
+        } else if item.is_initial_install {
+            Span::styled(" [Original OS Pre-installation]", Style::default().fg(theme.secondary))
         } else {
-            Span::styled(" [User Application]", Style::default().fg(theme.success))
+            Span::styled(" [User Installed Application]", Style::default().fg(theme.success))
         };
+
+        let age_str = format_installation_age(item.installed_time, item.is_initial_install);
 
         let text = vec![
             Line::from(vec![
@@ -211,6 +231,10 @@ fn render_app_sidebar(f: &mut Frame, app: &App, area: Rect) {
                 Span::raw("   "),
                 Span::styled("Size: ", Style::default().fg(theme.accent)),
                 Span::styled(size_str, Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+            ]),
+            Line::from(vec![
+                Span::styled("Installed: ", Style::default().fg(theme.accent)),
+                Span::styled(age_str, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
             ]),
             Line::from(vec![
                 Span::styled("ID / Path: ", theme.dim_style()),

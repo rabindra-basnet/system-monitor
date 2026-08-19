@@ -1,11 +1,14 @@
+use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
+use std::time::SystemTime;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AppSourceFilter {
     All,
-    SystemPkg,
+    UserInstalled,
+    InitialOS,
     DesktopOnly,
     Flatpak,
     Snap,
@@ -14,8 +17,9 @@ pub enum AppSourceFilter {
 impl AppSourceFilter {
     pub fn next(&self) -> Self {
         match self {
-            Self::All => Self::SystemPkg,
-            Self::SystemPkg => Self::DesktopOnly,
+            Self::All => Self::UserInstalled,
+            Self::UserInstalled => Self::InitialOS,
+            Self::InitialOS => Self::DesktopOnly,
             Self::DesktopOnly => Self::Flatpak,
             Self::Flatpak => Self::Snap,
             Self::Snap => Self::All,
@@ -24,8 +28,9 @@ impl AppSourceFilter {
 
     pub fn label(&self) -> &'static str {
         match self {
-            Self::All => "All Sources",
-            Self::SystemPkg => "System Packages",
+            Self::All => "All Packages",
+            Self::UserInstalled => "User Installed (New)",
+            Self::InitialOS => "Initial OS Installs",
             Self::DesktopOnly => "Desktop Apps",
             Self::Flatpak => "Flatpak",
             Self::Snap => "Snap",
@@ -36,6 +41,7 @@ impl AppSourceFilter {
 #[derive(Clone, Debug, PartialEq)]
 pub enum AppSortBy {
     Size,
+    Age,
     Name,
     Source,
 }
@@ -49,6 +55,8 @@ pub struct ApplicationItem {
     pub source: String,
     pub package_id: String,
     pub is_essential: bool,
+    pub is_initial_install: bool,
+    pub installed_time: Option<u64>,
 }
 
 pub struct ApplicationManager {
@@ -58,6 +66,59 @@ pub struct ApplicationManager {
     pub sort_by: AppSortBy,
     pub sort_descending: bool,
     pub is_loading: bool,
+}
+
+pub fn format_installation_age(timestamp: Option<u64>, is_initial: bool) -> String {
+    if is_initial {
+        return "Initial OS".to_string();
+    }
+    let Some(ts) = timestamp else {
+        return "—".to_string();
+    };
+
+    let now = match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => return "—".to_string(),
+    };
+
+    if ts > now {
+        return "Just now".to_string();
+    }
+
+    let diff_secs = now - ts;
+    let days = diff_secs / 86400;
+    let months = days / 30;
+    let years = days / 365;
+
+    if years >= 1 {
+        let rem_months = (days % 365) / 30;
+        if rem_months > 0 {
+            format!("{}y {}mo ago", years, rem_months)
+        } else {
+            format!("{}y ago", years)
+        }
+    } else if months >= 1 {
+        let rem_days = days % 30;
+        if rem_days > 0 {
+            format!("{}mo {}d ago", months, rem_days)
+        } else {
+            format!("{}mo ago", months)
+        }
+    } else if days >= 1 {
+        format!("{}d ago", days)
+    } else {
+        let hours = diff_secs / 3600;
+        if hours >= 1 {
+            format!("{}h ago", hours)
+        } else {
+            let mins = diff_secs / 60;
+            if mins >= 1 {
+                format!("{}m ago", mins)
+            } else {
+                "Just now".to_string()
+            }
+        }
+    }
 }
 
 pub fn is_system_essential_package(name: &str) -> bool {
@@ -149,6 +210,36 @@ impl ApplicationManager {
         self.is_loading = true;
         let mut all_apps = Vec::new();
 
+        // Fast index of DPKG mtimes for install timestamp and initial install detection
+        let mut dpkg_mtimes: HashMap<String, u64> = HashMap::new();
+        let mut initial_os_ts: Option<u64> = None;
+
+        if let Ok(entries) = fs::read_dir("/var/lib/dpkg/info") {
+            for entry in entries.flatten() {
+                let fname = entry.file_name();
+                let s = fname.to_string_lossy();
+                if s.ends_with(".list") {
+                    if let Ok(meta) = entry.metadata() {
+                        if let Ok(mtime) = meta.modified() {
+                            if let Ok(dur) = mtime.duration_since(SystemTime::UNIX_EPOCH) {
+                                let secs = dur.as_secs();
+                                let clean = s.trim_end_matches(".list");
+                                let base = clean.split(':').next().unwrap_or(clean);
+                                dpkg_mtimes.insert(base.to_string(), secs);
+
+                                if base == "ubuntu-minimal" || base == "base-files" || base == "ubuntu-standard" {
+                                    initial_os_ts = match initial_os_ts {
+                                        Some(old) => Some(old.min(secs)),
+                                        None => Some(secs),
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 1. Try Debian/Ubuntu dpkg-query with Essential and Priority tags
         if let Ok(output) = Command::new("dpkg-query")
             .args(["-W", "-f=${binary:Package}\t${Version}\t${Installed-Size}\t${binary:Summary}\t${Essential}\t${Priority}\n"])
@@ -166,9 +257,6 @@ impl ApplicationManager {
                         let essential_field = if parts.len() >= 5 { parts[4].trim() } else { "no" };
                         let priority_field = if parts.len() >= 6 { parts[5].trim() } else { "optional" };
 
-                        // Fix: Some 3rd-party .deb packages (e.g. Viber, Zoom) incorrectly record
-                        // Installed-Size in raw bytes instead of KiB. If raw_size > 5,000,000 (>5GB),
-                        // treat as raw bytes. Otherwise convert KiB to bytes (* 1024).
                         let size_bytes = if raw_size > 5_000_000 {
                             raw_size
                         } else {
@@ -180,6 +268,13 @@ impl ApplicationManager {
                             || priority_field == "important"
                             || is_system_essential_package(&name);
 
+                        let installed_time = dpkg_mtimes.get(&name).copied();
+                        let is_initial_install = if let (Some(mtime), Some(init_ts)) = (installed_time, initial_os_ts) {
+                            (mtime as i64 - init_ts as i64).abs() < 86400 * 2
+                        } else {
+                            is_essential
+                        };
+
                         all_apps.push(ApplicationItem {
                             name: name.clone(),
                             version,
@@ -188,6 +283,8 @@ impl ApplicationManager {
                             source: "APT".to_string(),
                             package_id: name,
                             is_essential,
+                            is_initial_install,
+                            installed_time,
                         });
                     }
                 }
@@ -216,6 +313,8 @@ impl ApplicationManager {
                                     source: "Pacman".to_string(),
                                     package_id: cur_name.clone(),
                                     is_essential,
+                                    is_initial_install: is_essential,
+                                    installed_time: None,
                                 });
                             }
                             cur_name = line.split(':').nth(1).unwrap_or("").trim().to_string();
@@ -241,6 +340,8 @@ impl ApplicationManager {
                             source: "Pacman".to_string(),
                             package_id: cur_name,
                             is_essential,
+                            is_initial_install: is_essential,
+                            installed_time: None,
                         });
                     }
                 }
@@ -249,28 +350,30 @@ impl ApplicationManager {
 
         // 3. Try Flatpak list
         if let Ok(output) = Command::new("flatpak")
-            .args(["list", "--app", "--columns=application,version,size,description"])
+            .args(["list", "--app", "--columns=name,application,version,size"])
             .output()
         {
             if output.status.success() {
                 let text = String::from_utf8_lossy(&output.stdout);
                 for line in text.lines() {
                     let parts: Vec<&str> = line.split('\t').collect();
-                    if parts.len() >= 4 {
-                        let app_id = parts[0].trim().to_string();
-                        let version = parts[1].trim().to_string();
-                        let size_str = parts[2].trim();
-                        let desc = parts[3].trim().to_string();
-                        let size_bytes = Self::parse_size_string(size_str);
+                    if parts.len() >= 2 {
+                        let name = parts[0].trim().to_string();
+                        let app_id = parts[1].trim().to_string();
+                        let version = if parts.len() > 2 { parts[2].trim().to_string() } else { "latest".to_string() };
+                        let size_bytes = if parts.len() > 3 { Self::parse_size_string(parts[3].trim()) } else { 0 };
 
+                        let is_essential = is_system_essential_package(&name);
                         all_apps.push(ApplicationItem {
-                            name: app_id.split('.').last().unwrap_or(&app_id).to_string(),
+                            name: name.clone(),
                             version,
                             size_bytes,
-                            description: desc,
+                            description: format!("Flatpak Application: {}", app_id),
                             source: "Flatpak".to_string(),
                             package_id: app_id,
-                            is_essential: false,
+                            is_essential,
+                            is_initial_install: false,
+                            installed_time: None,
                         });
                     }
                 }
@@ -282,56 +385,61 @@ impl ApplicationManager {
             if output.status.success() {
                 let text = String::from_utf8_lossy(&output.stdout);
                 for line in text.lines().skip(1) {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 3 {
-                        let name = parts[0].trim().to_string();
-                        let version = parts[1].trim().to_string();
-                        let summary = format!("Snap package: {}", name);
+                    let fields: Vec<&str> = line.split_whitespace().collect();
+                    if fields.len() >= 3 {
+                        let name = fields[0].to_string();
+                        let version = fields[1].to_string();
+                        let is_essential = is_system_essential_package(&name) || name == "core" || name == "snapd" || name.starts_with("core2");
 
                         all_apps.push(ApplicationItem {
                             name: name.clone(),
                             version,
                             size_bytes: 0,
-                            description: summary,
+                            description: format!("Snap Package: {}", name),
                             source: "Snap".to_string(),
                             package_id: name,
-                            is_essential: false,
+                            is_essential,
+                            is_initial_install: false,
+                            installed_time: None,
                         });
                     }
                 }
             }
         }
 
-        // 5. Scan standalone Desktop Applications (.desktop files)
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
-        let desktop_dirs = vec![
-            PathBuf::from(home).join(".local/share/applications"),
-            PathBuf::from("/usr/local/share/applications"),
-            PathBuf::from("/usr/share/applications"),
+        // 5. Index Desktop applications (.desktop files)
+        let desktop_dirs = [
+            dirs_next_desktop(),
+            Some(Path::new("/usr/local/share/applications").to_path_buf()),
+            Some(Path::new("/usr/share/applications").to_path_buf()),
         ];
 
-        for dir in desktop_dirs {
-            if let Ok(entries) = fs::read_dir(&dir) {
+        for dir_opt in desktop_dirs.into_iter().flatten() {
+            if let Ok(entries) = fs::read_dir(dir_opt) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().and_then(|s| s.to_str()) == Some("desktop") {
+                    if path.extension().map_or(false, |ext| ext == "desktop") {
                         if let Ok(content) = fs::read_to_string(&path) {
                             let mut name = String::new();
-                            let mut comment = String::new();
                             let mut exec = String::new();
+                            let mut comment = String::new();
                             let mut version = "1.0".to_string();
                             let mut is_nodisplay = false;
 
                             for line in content.lines() {
-                                if line.starts_with("Name=") && name.is_empty() {
-                                    name = line["Name=".len()..].trim().to_string();
-                                } else if line.starts_with("Comment=") && comment.is_empty() {
-                                    comment = line["Comment=".len()..].trim().to_string();
-                                } else if line.starts_with("Exec=") && exec.is_empty() {
-                                    exec = line["Exec=".len()..].trim().to_string();
-                                } else if line.starts_with("Version=") {
-                                    version = line["Version=".len()..].trim().to_string();
-                                } else if line.starts_with("NoDisplay=true") {
+                                let trimmed = line.trim();
+                                if trimmed == "[Desktop Action" {
+                                    break;
+                                }
+                                if trimmed.starts_with("Name=") && name.is_empty() {
+                                    name = trimmed.trim_start_matches("Name=").to_string();
+                                } else if trimmed.starts_with("Exec=") && exec.is_empty() {
+                                    exec = trimmed.trim_start_matches("Exec=").to_string();
+                                } else if trimmed.starts_with("Comment=") && comment.is_empty() {
+                                    comment = trimmed.trim_start_matches("Comment=").to_string();
+                                } else if trimmed.starts_with("Version=") {
+                                    version = trimmed.trim_start_matches("Version=").to_string();
+                                } else if trimmed.starts_with("NoDisplay=true") {
                                     is_nodisplay = true;
                                 }
                             }
@@ -364,6 +472,19 @@ impl ApplicationManager {
                                 }
 
                                 let is_essential = is_system_essential_package(&name);
+                                let mut installed_time = None;
+                                if let Ok(meta) = fs::metadata(&path) {
+                                    if let Ok(mod_time) = meta.modified() {
+                                        if let Ok(dur) = mod_time.duration_since(SystemTime::UNIX_EPOCH) {
+                                            installed_time = Some(dur.as_secs());
+                                        }
+                                    }
+                                }
+                                let is_initial_install = if let (Some(mtime), Some(init_ts)) = (installed_time, initial_os_ts) {
+                                    (mtime as i64 - init_ts as i64).abs() < 86400 * 2
+                                } else {
+                                    false
+                                };
 
                                 all_apps.push(ApplicationItem {
                                     name: name.clone(),
@@ -373,6 +494,8 @@ impl ApplicationManager {
                                     source: "Desktop".to_string(),
                                     package_id: path.display().to_string(),
                                     is_essential,
+                                    is_initial_install,
+                                    installed_time,
                                 });
                             }
                         }
@@ -387,30 +510,33 @@ impl ApplicationManager {
         self.is_loading = false;
     }
 
-    fn parse_size_string(s: &str) -> u64 {
-        let parts: Vec<&str> = s.split_whitespace().collect();
+    fn parse_size_string(sz_str: &str) -> u64 {
+        let clean = sz_str.trim();
+        if clean.is_empty() {
+            return 0;
+        }
+        let parts: Vec<&str> = clean.split_whitespace().collect();
         if parts.is_empty() {
             return 0;
         }
-
         let num: f64 = parts[0].parse().unwrap_or(0.0);
-        let unit = parts.get(1).map(|&u| u.to_lowercase()).unwrap_or_default();
+        let unit = if parts.len() > 1 { parts[1].to_uppercase() } else { "B".to_string() };
 
-        let multiplier: f64 = match unit.as_str() {
-            "b" | "bytes" => 1.0,
-            "kib" | "kb" | "k" => 1024.0,
-            "mib" | "mb" | "m" => 1024.0 * 1024.0,
-            "gib" | "gb" | "g" => 1024.0 * 1024.0 * 1024.0,
-            "tib" | "tb" | "t" => 1024.0 * 1024.0 * 1024.0 * 1024.0,
-            _ => 1024.0 * 1024.0,
-        };
-
-        (num * multiplier) as u64
+        if unit.starts_with("K") || unit.starts_with("KIB") {
+            (num * 1024.0) as u64
+        } else if unit.starts_with("M") || unit.starts_with("MIB") {
+            (num * 1024.0 * 1024.0) as u64
+        } else if unit.starts_with("G") || unit.starts_with("GIB") {
+            (num * 1024.0 * 1024.0 * 1024.0) as u64
+        } else {
+            num as u64
+        }
     }
 
     pub fn cycle_sort(&mut self) {
         self.sort_by = match self.sort_by {
-            AppSortBy::Size => AppSortBy::Name,
+            AppSortBy::Size => AppSortBy::Age,
+            AppSortBy::Age => AppSortBy::Name,
             AppSortBy::Name => AppSortBy::Source,
             AppSortBy::Source => AppSortBy::Size,
         };
@@ -431,6 +557,17 @@ impl ApplicationManager {
                         b.size_bytes.cmp(&a.size_bytes)
                     } else {
                         a.size_bytes.cmp(&b.size_bytes)
+                    }
+                });
+            }
+            AppSortBy::Age => {
+                self.items.sort_by(|a, b| {
+                    let ts_a = a.installed_time.unwrap_or(0);
+                    let ts_b = b.installed_time.unwrap_or(0);
+                    if desc {
+                        ts_b.cmp(&ts_a)
+                    } else {
+                        ts_a.cmp(&ts_b)
                     }
                 });
             }
@@ -462,7 +599,8 @@ impl ApplicationManager {
             .filter(|app| {
                 match self.source_filter {
                     AppSourceFilter::All => true,
-                    AppSourceFilter::SystemPkg => app.source == "APT" || app.source == "Pacman" || app.source == "RPM",
+                    AppSourceFilter::UserInstalled => !app.is_initial_install && !app.is_essential,
+                    AppSourceFilter::InitialOS => app.is_initial_install,
                     AppSourceFilter::DesktopOnly => app.source == "Desktop",
                     AppSourceFilter::Flatpak => app.source == "Flatpak",
                     AppSourceFilter::Snap => app.source == "Snap",
@@ -486,7 +624,7 @@ impl ApplicationManager {
         }
 
         let (cmd_name, args, needs_sudo): (&str, Vec<&str>, bool) = match app.source.as_str() {
-            "APT" => ("apt-get", vec!["remove", "-y", &app.package_id], true),
+            "APT" => ("apt-get", vec!["remove", "-y", "-q", &app.package_id], true),
             "Pacman" => ("pacman", vec!["-R", "--noconfirm", &app.package_id], true),
             "Flatpak" => ("flatpak", vec!["uninstall", "-y", &app.package_id], false),
             "Snap" => ("snap", vec!["remove", &app.package_id], true),
@@ -513,6 +651,8 @@ impl ApplicationManager {
         } else {
             let output = Command::new(cmd_name)
                 .args(args)
+                .env("DEBIAN_FRONTEND", "noninteractive")
+                .env("SYSTEMD_PAGER", "")
                 .output()
                 .map_err(|e| format!("Execution failed: {}", e))?;
             if output.status.success() {
@@ -535,4 +675,10 @@ impl ApplicationManager {
             Err(e) => Err(e),
         }
     }
+}
+
+fn dirs_next_desktop() -> Option<std::path::PathBuf> {
+    std::env::var("HOME")
+        .ok()
+        .map(|h| Path::new(&h).join(".local/share/applications"))
 }

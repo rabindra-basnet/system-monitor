@@ -109,10 +109,12 @@ fn test_application_manager() {
     // Test filter transition
     assert_eq!(app_mgr.source_filter, AppSourceFilter::All);
     app_mgr.source_filter = app_mgr.source_filter.next();
-    assert_eq!(app_mgr.source_filter, AppSourceFilter::SystemPkg);
+    assert_eq!(app_mgr.source_filter, AppSourceFilter::UserInstalled);
 
     // Test sort transition
     assert_eq!(app_mgr.sort_by, AppSortBy::Size);
+    app_mgr.cycle_sort();
+    assert_eq!(app_mgr.sort_by, AppSortBy::Age);
     app_mgr.cycle_sort();
     assert_eq!(app_mgr.sort_by, AppSortBy::Name);
     app_mgr.cycle_sort();
