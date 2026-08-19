@@ -319,7 +319,7 @@ pub fn try_launch_native_gui(forward_args: &[String]) -> Result<(), String> {
             c_home.as_ptr(),
             child_argv_ptrs.as_ptr(),
             ptr::null(), // default env
-            0x0008,      // G_SPAWN_SEARCH_PATH = 1 << 3
+            0,           // spawn_flags (VTE handles search internally)
             ptr::null(),
             ptr::null_mut(),
             ptr::null(),
