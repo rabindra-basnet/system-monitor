@@ -83,7 +83,6 @@ impl SensorCollector {
             }
         }
 
-        self.sensors
-            .sort_by_key(|a| a.label.to_lowercase());
+        self.sensors.sort_by_key(|a| a.label.to_lowercase());
     }
 }

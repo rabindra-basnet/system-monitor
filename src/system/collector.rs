@@ -221,8 +221,7 @@ impl SystemCollector {
                 tx_speed: (data.transmitted() as f64 / elapsed) as u64,
             })
             .collect();
-        self.interface_stats
-            .sort_by_key(|a| a.name.to_lowercase());
+        self.interface_stats.sort_by_key(|a| a.name.to_lowercase());
     }
 
     pub fn uptime_formatted(&self) -> String {
