@@ -139,3 +139,11 @@ fn test_app_state_initialization() {
     assert!(!app.should_quit);
     assert!(!app.process_list.is_empty());
 }
+
+#[test]
+fn test_network_manager() {
+    let mut net_mgr = stasis::system::network::NetworkManager::new();
+    net_mgr.refresh();
+    assert!(net_mgr.summary.listening_ports.len() <= net_mgr.summary.total_sockets);
+}
+

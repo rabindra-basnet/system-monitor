@@ -5,6 +5,7 @@ use crate::system::applications::{ApplicationItem, ApplicationManager};
 use crate::system::autostart::AutostartManager;
 use crate::system::cleaner::SystemCleaner;
 use crate::system::collector::SystemCollector;
+use crate::system::network::NetworkManager;
 use crate::system::processes::{ProcessItem, ProcessManager, ProcessSortBy};
 use crate::system::sensors::SensorCollector;
 use crate::system::services::ServiceManager;
@@ -136,6 +137,7 @@ pub struct App {
     pub autostart_mgr: AutostartManager,
     pub app_mgr: ApplicationManager,
     pub sensor_collector: SensorCollector,
+    pub network_mgr: NetworkManager,
 
     // Selections
     pub process_list: Vec<ProcessItem>,
@@ -183,6 +185,7 @@ impl App {
         }
 
         let sensor_collector = SensorCollector::new();
+        let network_mgr = NetworkManager::new();
 
         Self {
             active_tab: AppTab::Dashboard,
@@ -199,6 +202,7 @@ impl App {
             autostart_mgr,
             app_mgr,
             sensor_collector,
+            network_mgr,
 
             process_list,
             process_table_state,
@@ -234,6 +238,7 @@ impl App {
         // Refresh system metrics
         self.collector.refresh();
         self.sensor_collector.refresh();
+        self.network_mgr.refresh();
 
         // Refresh process list if active
         if self.active_tab == AppTab::Processes {

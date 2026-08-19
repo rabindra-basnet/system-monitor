@@ -11,34 +11,54 @@ use crate::system::collector::{format_bytes, format_speed};
 use crate::system::processes::ProcessItem;
 
 pub fn render(f: &mut Frame, app: &App, area: Rect) {
-    if area.height >= 32 {
+    if area.height >= 38 {
+        // High-resolution / expanded view: 5 full diagnostic rows
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(4),  // System Specs Banner
-                Constraint::Length(9),  // CPU & Memory / Swap Gauges + Sparklines
-                Constraint::Length(10), // Disks, Network & Sensors/Cores
-                Constraint::Min(8),     // Real-Time System Analysis & Diagnostics
+                Constraint::Length(4),  // 1. Specs & Health Banner
+                Constraint::Length(8),  // 2. CPU & Memory/Swap Gauges + Sparklines
+                Constraint::Length(7),  // 3. Storage & Thermal/Cores
+                Constraint::Length(10), // 4. Network Ingress/Egress & Active Ports / Sockets
+                Constraint::Min(8),     // 5. System Eaters & Diagnostics
             ])
             .split(area);
 
         render_specs_banner(f, app, chunks[0]);
         render_cpu_memory_row(f, app, chunks[1]);
-        render_bottom_resource_row(f, app, chunks[2]);
+        render_storage_cores_row(f, app, chunks[2]);
+        render_network_sockets_row(f, app, chunks[3]);
+        render_system_analysis_row(f, app, chunks[4]);
+    } else if area.height >= 28 {
+        // Medium view: 4 diagnostic rows
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(4), // 1. Specs Banner
+                Constraint::Length(8), // 2. CPU & Memory
+                Constraint::Length(9), // 3. Network Ingress/Egress & Open Ports
+                Constraint::Min(7),    // 4. System Eaters & Diagnostics
+            ])
+            .split(area);
+
+        render_specs_banner(f, app, chunks[0]);
+        render_cpu_memory_row(f, app, chunks[1]);
+        render_network_sockets_row(f, app, chunks[2]);
         render_system_analysis_row(f, app, chunks[3]);
     } else {
+        // Compact view
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(4), // System Specs Banner
-                Constraint::Length(9), // CPU & Memory / Swap Gauges + Sparklines
-                Constraint::Min(8),    // Disks, Network & Sensors/Cores
+                Constraint::Length(4), // Specs
+                Constraint::Length(8), // CPU & Memory
+                Constraint::Min(8),    // Network & Storage
             ])
             .split(area);
 
         render_specs_banner(f, app, chunks[0]);
         render_cpu_memory_row(f, app, chunks[1]);
-        render_bottom_resource_row(f, app, chunks[2]);
+        render_storage_cores_row(f, app, chunks[2]);
     }
 }
 
@@ -222,19 +242,14 @@ fn render_memory_card(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(sparkline, rows[2]);
 }
 
-fn render_bottom_resource_row(f: &mut Frame, app: &App, area: Rect) {
+fn render_storage_cores_row(f: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(34), // Disks & Storage
-            Constraint::Percentage(33), // Network Traffic
-            Constraint::Percentage(33), // Cores & Sensors
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
     render_disks_card(f, app, chunks[0]);
-    render_network_card(f, app, chunks[1]);
-    render_cores_sensors_card(f, app, chunks[2]);
+    render_cores_sensors_card(f, app, chunks[1]);
 }
 
 fn render_disks_card(f: &mut Frame, app: &App, area: Rect) {
@@ -256,13 +271,13 @@ fn render_disks_card(f: &mut Frame, app: &App, area: Rect) {
         return;
     }
 
-    let constraints = vec![Constraint::Length(2); disks.len().min(4)];
+    let constraints = vec![Constraint::Length(2); disks.len().min(2)];
     let disk_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(constraints)
         .split(inner);
 
-    for (i, disk) in disks.iter().take(4).enumerate() {
+    for (i, disk) in disks.iter().take(2).enumerate() {
         let total = disk.total_space();
         let avail = disk.available_space();
         let used = total.saturating_sub(avail);
@@ -301,61 +316,6 @@ fn render_disks_card(f: &mut Frame, app: &App, area: Rect) {
     }
 }
 
-fn render_network_card(f: &mut Frame, app: &App, area: Rect) {
-    let theme = &app.theme;
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(theme.border))
-        .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 󰲝 Network Throughput ", theme.title_style()));
-
-    let inner = block.inner(area);
-    f.render_widget(block, area);
-
-    let rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1), // Speed Badges
-            Constraint::Length(3), // Download Sparkline
-            Constraint::Length(3), // Upload Sparkline
-        ])
-        .split(inner);
-
-    let col = &app.collector;
-    let rx_speed_str = format_speed(col.current_rx_speed);
-    let tx_speed_str = format_speed(col.current_tx_speed);
-
-    let speeds = Paragraph::new(Line::from(vec![
-        Span::styled("  Down: ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
-        Span::styled(&rx_speed_str, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
-        Span::raw("   "),
-        Span::styled("  Up: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-        Span::styled(&tx_speed_str, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
-    ]));
-    f.render_widget(speeds, rows[0]);
-
-    // RX Sparkline
-    let rx_data: Vec<u64> = col.net_rx_history.iter().copied().collect();
-    let max_rx = *rx_data.iter().max().unwrap_or(&1024).max(&1024);
-    let rx_sparkline = Sparkline::default()
-        .block(Block::default().title(Span::styled("Download History", theme.dim_style())))
-        .data(&rx_data)
-        .max(max_rx)
-        .style(Style::default().fg(theme.success));
-    f.render_widget(rx_sparkline, rows[1]);
-
-    // TX Sparkline
-    let tx_data: Vec<u64> = col.net_tx_history.iter().copied().collect();
-    let max_tx = *tx_data.iter().max().unwrap_or(&1024).max(&1024);
-    let tx_sparkline = Sparkline::default()
-        .block(Block::default().title(Span::styled("Upload History", theme.dim_style())))
-        .data(&tx_data)
-        .max(max_tx)
-        .style(Style::default().fg(theme.secondary));
-    f.render_widget(tx_sparkline, rows[2]);
-}
-
 fn render_cores_sensors_card(f: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
     let block = Block::default()
@@ -376,11 +336,11 @@ fn render_cores_sensors_card(f: &mut Frame, app: &App, area: Rect) {
     // CPU Cores header
     lines.push(Line::from(vec![
         Span::styled("Active CPU Cores: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{} Cores", cores.len()), theme.dim_style()),
+        Span::styled(format!("{} Cores Active", cores.len()), theme.dim_style()),
     ]));
 
     // Sample first 4 cores
-    for core in cores.iter().take(4) {
+    for core in cores.iter().take(3) {
         let pct = core.usage.round().clamp(0.0, 100.0) as u16;
         let color = if pct > 80 {
             theme.danger
@@ -398,11 +358,7 @@ fn render_cores_sensors_card(f: &mut Frame, app: &App, area: Rect) {
 
     // Thermal Sensors
     if !sensors.is_empty() {
-        lines.push(Line::from(vec![
-            Span::styled("󰔏 Thermals: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
-        ]));
-
-        for s in sensors.iter().take(2) {
+        for s in sensors.iter().take(1) {
             let temp_color = if s.temperature > 80.0 {
                 theme.danger
             } else if s.temperature > 60.0 {
@@ -412,8 +368,148 @@ fn render_cores_sensors_card(f: &mut Frame, app: &App, area: Rect) {
             };
 
             lines.push(Line::from(vec![
-                Span::styled(format!("  {}: ", s.label), theme.dim_style()),
+                Span::styled("  󰔏 Temp: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+                Span::styled(format!("{}: ", s.label), theme.dim_style()),
                 Span::styled(format!("{:.1}°C", s.temperature), Style::default().fg(temp_color).add_modifier(Modifier::BOLD)),
+            ]));
+        }
+    }
+
+    let p = Paragraph::new(lines).wrap(Wrap { trim: true });
+    f.render_widget(p, inner);
+}
+
+fn render_network_sockets_row(f: &mut Frame, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    render_network_bandwidth_card(f, app, chunks[0]);
+    render_open_ports_sockets_card(f, app, chunks[1]);
+}
+
+fn render_network_bandwidth_card(f: &mut Frame, app: &App, area: Rect) {
+    let theme = &app.theme;
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.card_bg))
+        .title(Span::styled(" 󰲝 Network Traffic (Ingress & Egress) ", theme.title_style()));
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    let rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Speed Badges
+            Constraint::Length(3), // Ingress Sparkline
+            Constraint::Length(3), // Egress Sparkline
+            Constraint::Min(1),    // Top Network Processes
+        ])
+        .split(inner);
+
+    let col = &app.collector;
+    let rx_speed_str = format_speed(col.current_rx_speed);
+    let tx_speed_str = format_speed(col.current_tx_speed);
+
+    let speeds = Paragraph::new(Line::from(vec![
+        Span::styled("  Ingress (Down): ", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+        Span::styled(&rx_speed_str, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+        Span::raw("   "),
+        Span::styled("  Egress (Up): ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+        Span::styled(&tx_speed_str, Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+    ]));
+    f.render_widget(speeds, rows[0]);
+
+    // Ingress Sparkline
+    let rx_data: Vec<u64> = col.net_rx_history.iter().copied().collect();
+    let max_rx = *rx_data.iter().max().unwrap_or(&1024).max(&1024);
+    let rx_sparkline = Sparkline::default()
+        .block(Block::default().title(Span::styled("Live Ingress History", theme.dim_style())))
+        .data(&rx_data)
+        .max(max_rx)
+        .style(Style::default().fg(theme.success));
+    f.render_widget(rx_sparkline, rows[1]);
+
+    // Egress Sparkline
+    let tx_data: Vec<u64> = col.net_tx_history.iter().copied().collect();
+    let max_tx = *tx_data.iter().max().unwrap_or(&1024).max(&1024);
+    let tx_sparkline = Sparkline::default()
+        .block(Block::default().title(Span::styled("Live Egress History", theme.dim_style())))
+        .data(&tx_data)
+        .max(max_tx)
+        .style(Style::default().fg(theme.secondary));
+    f.render_widget(tx_sparkline, rows[2]);
+
+    // Top Network Consuming Apps
+    let top_net_procs = &app.network_mgr.summary.top_network_processes;
+    let mut net_procs_spans = vec![
+        Span::styled(" Top Network Apps: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+    ];
+    if top_net_procs.is_empty() {
+        net_procs_spans.push(Span::styled("None", theme.dim_style()));
+    } else {
+        for (name, count) in top_net_procs.iter().take(3) {
+            net_procs_spans.push(Span::styled(format!("{} ({} sock) ", name, count), Style::default().fg(theme.fg)));
+        }
+    }
+    let p_net_procs = Paragraph::new(Line::from(net_procs_spans));
+    f.render_widget(p_net_procs, rows[3]);
+}
+
+fn render_open_ports_sockets_card(f: &mut Frame, app: &App, area: Rect) {
+    let theme = &app.theme;
+    let summary = &app.network_mgr.summary;
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.card_bg))
+        .title(Span::styled(format!(" 󰒺 Open Listening Ports & Sockets ({} Total) ", summary.total_sockets), theme.title_style()));
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+    let mut lines = Vec::new();
+
+    // Listening Ports Header
+    lines.push(Line::from(vec![
+        Span::styled("󰄲 Open Listening Ports (Servers/Daemons):", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+    ]));
+
+    if summary.listening_ports.is_empty() {
+        lines.push(Line::from(Span::styled("  No open listening ports detected", theme.dim_style())));
+    } else {
+        for s in summary.listening_ports.iter().take(3) {
+            let pid_str = s.pid.map(|p| format!(" (PID {})", p)).unwrap_or_default();
+            lines.push(Line::from(vec![
+                Span::styled(format!("  • Port {:<5} ", s.local_port), Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
+                Span::styled(format!("[{}] ", s.proto), Style::default().fg(theme.secondary)),
+                Span::styled(format!("{} ", s.local_addr), theme.dim_style()),
+                Span::styled(format!("➔ {}{}", s.proc_name, pid_str), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+            ]));
+        }
+    }
+
+    lines.push(Line::from(Span::raw("")));
+
+    // Active Remote Connections
+    lines.push(Line::from(vec![
+        Span::styled("󰖟 Active Established Connections (Ingress/Egress):", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+    ]));
+
+    if summary.active_connections.is_empty() {
+        lines.push(Line::from(Span::styled("  No external active connections", theme.dim_style())));
+    } else {
+        for s in summary.active_connections.iter().take(2) {
+            let pid_str = s.pid.map(|p| format!(" (PID {})", p)).unwrap_or_default();
+            lines.push(Line::from(vec![
+                Span::styled(format!("  • {:<18} ", s.proc_name), Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)),
+                Span::styled(" ⇄ ", Style::default().fg(theme.accent)),
+                Span::styled(format!("{}:{} ", s.peer_addr, s.peer_port), Style::default().fg(theme.secondary)),
+                Span::styled(pid_str, theme.dim_style()),
             ]));
         }
     }
@@ -439,7 +535,7 @@ fn render_top_consumers_card(f: &mut Frame, app: &App, area: Rect) {
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(theme.border))
         .style(Style::default().bg(theme.card_bg))
-        .title(Span::styled(" 🔥 Top Resource Consumers (Live Snapshot) ", theme.title_style()));
+        .title(Span::styled(" 🔥 What is Eating Up the System (Top Consumers) ", theme.title_style()));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -458,7 +554,7 @@ fn render_top_consumers_card(f: &mut Frame, app: &App, area: Rect) {
 
     // Top CPU Hogs
     lines.push(Line::from(vec![
-        Span::styled(" Top CPU Processes: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(" Top CPU Consuming Processes: ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
     ]));
 
     if top_3_cpu.is_empty() {
@@ -486,7 +582,7 @@ fn render_top_consumers_card(f: &mut Frame, app: &App, area: Rect) {
 
     // Top Memory Hogs
     lines.push(Line::from(vec![
-        Span::styled("󰍛 Top Memory Consumers: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
+        Span::styled("󰍛 Top Memory Consuming Processes: ", Style::default().fg(theme.secondary).add_modifier(Modifier::BOLD)),
     ]));
 
     if top_3_mem.is_empty() {
